@@ -1,0 +1,99 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Market\Application;
+
+use Market\Domain\Entity\Asset;
+use Market\Domain\Entity\PricePoint;
+use Market\Infrastructure\Storage\InMemory\AssetRepository;
+use Market\Infrastructure\Storage\InMemory\PriceHistoryRepository;
+
+final class AssetService
+{
+    public function __construct(
+        private readonly AssetRepository $assetRepository,
+        private readonly PriceHistoryRepository $priceHistoryRepository,
+        private readonly PriceGeneratorService $priceGeneratorService,
+        private readonly int $priceUpdateIntervalSeconds,
+        private readonly int $historyLimit,
+        private readonly bool $debug
+    ) {
+    }
+
+    public function listAssets(): array
+    {
+        $this->refreshMarket();
+
+        return array_map(static fn (Asset $asset): array => $asset->toArray(), $this->assetRepository->all());
+    }
+
+    public function tick(): array
+    {
+        $this->refreshMarket();
+
+        return array_map(static fn (Asset $asset): array => $asset->toArray(), $this->assetRepository->all());
+    }
+
+    public function getAsset(string $assetId): ?array
+    {
+        $this->refreshMarket();
+
+        $asset = $this->assetRepository->find($assetId);
+
+        return $asset?->toArray();
+    }
+
+    public function getHistory(string $assetId, ?int $limit = null): array
+    {
+        $this->refreshMarket();
+
+        return array_map(
+            static fn (PricePoint $pricePoint): array => $pricePoint->toArray(),
+            $this->priceHistoryRepository->history($assetId, $limit ?? $this->historyLimit)
+        );
+    }
+
+    public function getCurrentPrices(): array
+    {
+        $this->refreshMarket();
+
+        $prices = [];
+        foreach ($this->assetRepository->all() as $asset) {
+            $prices[$asset->getId()] = $asset->getLastPrice();
+        }
+
+        return $prices;
+    }
+
+    private function refreshMarket(): void
+    {
+        foreach ($this->assetRepository->all() as $asset) {
+            $lastPricePoint = $this->priceHistoryRepository->last($asset->getId());
+
+            if ($lastPricePoint === null) {
+                $initial = new PricePoint($asset->getId(), $asset->getLastPrice(), time());
+                $this->priceHistoryRepository->append($initial);
+                continue;
+            }
+
+            if ((time() - $lastPricePoint->getTimestamp()) < $this->priceUpdateIntervalSeconds) {
+                continue;
+            }
+
+            $nextPricePoint = $this->priceGeneratorService->nextPrice($asset);
+            $this->priceHistoryRepository->append($nextPricePoint);
+            $asset->setLastPrice($nextPricePoint->getPrice());
+            $this->assetRepository->save($asset);
+
+            if ($this->debug) {
+                error_log(json_encode([
+                    'type' => 'price_tick',
+                    'assetId' => $asset->getId(),
+                    'price' => $nextPricePoint->getPrice(),
+                    'ts' => $nextPricePoint->getTimestamp(),
+                ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '{}');
+            }
+        }
+    }
+}
