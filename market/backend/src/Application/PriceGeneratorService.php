@@ -18,7 +18,7 @@ final class PriceGeneratorService
         $reversionStrength = 0.2;
         $reversion = ($fairPrice - $currentPrice) * $reversionStrength;
 
-        $noisePercent = $asset->getRisk() * 0.05; // up to ±5% per tick at risk=1
+        $noisePercent = $asset->getRisk() * 0.08;
         $noise = 0.0;
 
         if ($noisePercent > 0.0) {

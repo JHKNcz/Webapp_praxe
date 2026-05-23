@@ -1,0 +1,7 @@
+{
+  "name": "market-io",
+  "private": true,
+  "scripts": {
+    "dev": "node dev/server.js"
+  }
+}

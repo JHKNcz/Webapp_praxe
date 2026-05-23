@@ -8,6 +8,7 @@ final class Session
 {
     public function __construct(
         private readonly string $sessionId,
+        private readonly string $nickname,
         private readonly int $createdAt,
         private ?int $endedAt = null
     ) {
@@ -16,6 +17,16 @@ final class Session
     public function getSessionId(): string
     {
         return $this->sessionId;
+    }
+
+    public function getNickname(): string
+    {
+        return $this->nickname;
+    }
+
+    public function getCreatedAt(): int
+    {
+        return $this->createdAt;
     }
 
     public function isActive(): bool
@@ -28,10 +39,16 @@ final class Session
         $this->endedAt = $timestamp;
     }
 
+    public function getEndedAt(): ?int
+    {
+        return $this->endedAt;
+    }
+
     public function toArray(): array
     {
         return [
             'sessionId' => $this->sessionId,
+            'nickname' => $this->nickname,
             'createdAt' => $this->createdAt,
             'endedAt' => $this->endedAt,
             'active' => $this->isActive(),

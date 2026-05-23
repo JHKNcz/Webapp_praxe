@@ -1,98 +1,24 @@
-# Market backend (PHP)
+# PHP backend for Market.io
 
-## Run
+## Local (without Docker)
 
 ```bash
-php -S localhost:8000 -t backend/public
+composer install
+php -S localhost:8000 -t public
 ```
 
-## Main endpoints
+Run tests:
 
-- `POST /session/start`
-- `POST /session/end`
-- `GET /assets`
-- `GET /assets/tick`
-- `GET /assets/{id}`
-- `GET /portfolio?sessionId=...`
-- `POST /trade/buy`
-- `POST /trade/sell`
-- `GET /leaderboard`
-
-## Payload examples
-
-### `POST /session/start`
-
-Response:
-```json
-{
-	"ok": true,
-	"session": {
-		"sessionId": "...",
-		"createdAt": 0,
-		"endedAt": null,
-		"active": true,
-		"cash": 10000
-	}
-}
+```bash
+php tests/run.php
 ```
 
-### `GET /assets`
+## Docker
 
-Response:
-```json
-{
-	"ok": true,
-	"items": [
-		{ "id": "asset-1", "name": "Alpha Token", "lastPrice": 100.12 }
-	]
-}
+From `market/` directory:
+
+```bash
+docker compose up -d --build
 ```
 
-### `GET /assets/tick`
-
-Response:
-```json
-{
-	"ok": true,
-	"items": [
-		{ "id": "asset-1", "name": "Alpha Token", "lastPrice": 101.02 }
-	]
-}
-```
-
-### `GET /assets/{id}?limit=20`
-
-Response:
-```json
-{
-	"ok": true,
-	"item": { "id": "asset-1", "name": "Alpha Token", "lastPrice": 101.02 },
-	"history": [
-		{ "assetId": "asset-1", "price": 100.1, "ts": 1710000000 }
-	]
-}
-```
-
-### `POST /trade/buy`
-
-Body:
-```json
-{ "sessionId": "...", "assetId": "asset-1", "quantity": 2 }
-```
-
-Response:
-```json
-{ "ok": true, "trade": { "type": "buy", "assetId": "asset-1", "quantity": 2, "price": 101.02, "portfolio": { "cash": 9797.96 } } }
-```
-
-## CORS
-
-Backend sets permissive CORS headers for development. Adjust in `public/index.php` if needed.
-
-## Example flow
-
-1. Start session.
-2. Load assets.
-3. Buy/sell using returned `sessionId`.
-4. Read portfolio.
-5. End session and save leaderboard entry.
+API listens on `127.0.0.1:9080`. Wire your external nginx using `deploy/external-nginx.example.conf`.
