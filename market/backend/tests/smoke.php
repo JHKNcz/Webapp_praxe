@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 $app = require __DIR__ . '/../bootstrap.php';
 
-$request = new Market\Http\Request('POST', '/session/start', [], [], [], '');
+$request = new Market\Http\Request('POST', '/session/start', [], ['nickname' => 'SmokeTest'], [], '');
 $response = $app['router']->dispatch($request);
 
 if ($response->getStatusCode() !== 200) {

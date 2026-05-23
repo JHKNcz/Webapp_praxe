@@ -43,6 +43,34 @@ final class RedisOrderRepository
         $this->redis->lpush($this->queueKey($order->getAssetId(), $order->getSide()), $order->getId());
     }
 
+    public function requeueBack(Order $order): void
+    {
+        $this->redis->rpush($this->queueKey($order->getAssetId(), $order->getSide()), $order->getId());
+    }
+
+    public function removeFromQueue(Order $order): void
+    {
+        $this->redis->lrem($this->queueKey($order->getAssetId(), $order->getSide()), 0, $order->getId());
+    }
+
+    /** @return array<int, Order> */
+    public function listOpenForAsset(string $assetId): array
+    {
+        $orders = [];
+
+        foreach (['buy', 'sell'] as $side) {
+            foreach ($this->redis->lrange($this->queueKey($assetId, $side), 0, -1) as $orderId) {
+                $order = $this->find($orderId);
+
+                if ($order !== null && $order->isOpen()) {
+                    $orders[] = $order;
+                }
+            }
+        }
+
+        return $orders;
+    }
+
     public function save(Order $order): void
     {
         $this->redis->hset('order:' . $order->getId(), [

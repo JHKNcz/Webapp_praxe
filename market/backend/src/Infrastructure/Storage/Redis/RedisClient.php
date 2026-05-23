@@ -44,10 +44,25 @@ final class RedisClient
         return is_array($values) ? $values : [];
     }
 
-    /** @param array<string, float|int|string> $fields */
+    public function ltrim(string $key, int $start, int $stop): void
+    {
+        $this->client->ltrim($this->key($key), $start, $stop);
+    }
+
+    public function lrem(string $key, int $count, string $value): void
+    {
+        $this->client->lrem($this->key($key), $count, $value);
+    }
+
+    /** @param array<string, float|int|string|null> $fields */
     public function hset(string $key, array $fields): void
     {
-        $this->client->hset($this->key($key), $fields);
+        $payload = [];
+        foreach ($fields as $field => $value) {
+            $payload[$field] = $value === null ? '' : (string) $value;
+        }
+
+        $this->client->hmset($this->key($key), $payload);
     }
 
     /** @return array<string, string> */
@@ -66,6 +81,15 @@ final class RedisClient
     public function zadd(string $key, float $score, string $member): void
     {
         $this->client->zadd($this->key($key), [$member => $score]);
+    }
+
+    public function zrem(string $key, string ...$members): void
+    {
+        if ($members === []) {
+            return;
+        }
+
+        $this->client->zrem($this->key($key), $members);
     }
 
     /** @return array<int, array{member: string, score: float}> */
@@ -102,6 +126,15 @@ final class RedisClient
         $this->client->sadd($this->key($key), $members);
     }
 
+    public function srem(string $key, string ...$members): void
+    {
+        if ($members === []) {
+            return;
+        }
+
+        $this->client->srem($this->key($key), $members);
+    }
+
     /** @return array<int, string> */
     public function smembers(string $key): array
     {
@@ -110,10 +143,28 @@ final class RedisClient
         return is_array($members) ? array_map('strval', $members) : [];
     }
 
+    public function set(string $key, string $value): void
+    {
+        $this->client->set($this->key($key), $value);
+    }
+
+    public function get(string $key): ?string
+    {
+        $value = $this->client->get($this->key($key));
+
+        return is_string($value) ? $value : null;
+    }
+
     public function ping(): bool
     {
         try {
-            return $this->client->ping() === 'PONG';
+            $result = $this->client->ping();
+
+            if (is_object($result) && method_exists($result, 'getPayload')) {
+                return $result->getPayload() === 'PONG';
+            }
+
+            return $result === 'PONG' || $result === true;
         } catch (\Throwable) {
             return false;
         }

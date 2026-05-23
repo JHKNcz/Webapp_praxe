@@ -20,6 +20,7 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const FRONTEND = join(__dirname, '..', 'frontend');
 const API_TARGET = process.env.API_TARGET || 'http://127.0.0.1:9080';
 const WS_TARGET = process.env.WS_TARGET || 'ws://127.0.0.1:9081/ws';
+const HOST = process.env.DEV_HOST || '127.0.0.1';
 const PORT = Number(process.env.DEV_PORT || 3000);
 
 const MIME = {
@@ -121,8 +122,20 @@ wss.on('connection', (client) => {
   client.on('error', () => upstream.close());
 });
 
-server.listen(PORT, () => {
-  console.log(`Market.io dev server: http://localhost:${PORT}`);
+server.listen(PORT, HOST, () => {
+  console.log(`Market.io dev server: http://${HOST}:${PORT}`);
   console.log(`  API proxy -> ${API_TARGET}`);
   console.log(`  WS  proxy -> ${WS_TARGET}`);
+});
+
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`Port ${PORT} is already in use on ${HOST}.`);
+    console.error(`  Open http://${HOST}:${PORT} if a dev server is already running.`);
+    console.error(`  Or stop the process:  Stop-Process -Id (Get-NetTCPConnection -LocalPort ${PORT}).OwningProcess -Force`);
+    console.error(`  Or use another port:  $env:DEV_PORT=3001; node dev/server.js`);
+    process.exit(1);
+  }
+
+  throw err;
 });

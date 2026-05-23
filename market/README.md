@@ -1,6 +1,6 @@
 # Market.io
 
-Multiplayer .io style market simulation. Players join with a nickname, trade assets at simulated prices via FIFO P2P order matching, and compete on a Redis-backed leaderboard.
+Multiplayer .io style market simulation. Players join with a nickname, trade assets at simulated prices via hybrid market/P2P order matching, and compete on a Redis-backed leaderboard.
 
 Everything lives under this directory — safe to deploy alongside other self-hosted apps.
 
@@ -48,7 +48,7 @@ docker compose up -d --build
 Wait until containers are healthy, then start the dev proxy (serves frontend + `/api` + `/ws`):
 
 ```powershell
-node dev/server.js
+npm run dev
 ```
 
 Open **http://localhost:3000** in your browser.
@@ -58,7 +58,9 @@ Open **http://localhost:3000** in your browser.
 ```powershell
 curl http://127.0.0.1:9080/assets
 curl http://127.0.0.1:9081/health
-docker compose exec api php tests/run.php
+docker compose exec -T api php tests/run.php
+docker compose exec -T api php tests/smoke.php
+docker compose exec -T api php tests/price_persistence.php
 ```
 
 ### Stop
@@ -101,18 +103,52 @@ See [`deploy/external-nginx.example.conf`](deploy/external-nginx.example.conf) f
 
 ## API (prefix with `/api` in production)
 
-- `POST /session/start` — `{ nickname }`
-- `POST /session/end` — `{ sessionId }`
-- `GET /assets`, `GET /assets/tick`, `GET /assets/{id}`
-- `GET /portfolio?sessionId=...`
-- `POST /orders` — `{ sessionId, assetId, side, quantity }`
-- `GET /orders?sessionId=...`
-- `GET /orderbook/{assetId}`
-- `GET /leaderboard`
+### Session
+
+- `POST /session/start` — `{ nickname }` — create session, register for live leaderboard
+- `POST /session/resume` — `{ sessionId }` — re-register after browser reload (localStorage restore)
+- `POST /session/end` — `{ sessionId }` — cancel open orders, record score, delete session data
+
+### Assets & portfolio
+
+- `GET /assets` — list assets with `lastPrice`
+- `GET /assets/tick` — advance simulated prices (also drives live leaderboard sync)
+- `GET /assets/{id}?limit=40` — price history
+- `GET /portfolio?sessionId=...` — cash, holdings, PnL summary
+
+### Orders & book
+
+- `POST /orders` — `{ sessionId, assetId, side, quantity, mode }`
+  - `mode: "market"` — instant fill vs exchange at current `lastPrice`
+  - `mode: "limit"` — post to FIFO order book at current `lastPrice` (not a custom limit price)
+- `POST /orders/{id}/take` — `{ sessionId, quantity }` — take a resting player order
+- `GET /orders?sessionId=...` — open orders for session
+- `GET /orderbook/{assetId}` — bids/asks snapshot
+
+### Other
+
+- `GET /transactions?sessionId=&limit=50` — market and P2P trade history
+- `GET /leaderboard` — live top players
 
 ## How trading works
 
-1. Simulated prices update on the server (players do not move the market).
-2. Buy/sell orders enter FIFO queues per asset and side.
-3. When opposite orders exist, the matching engine pairs them at the current simulated price.
-4. Unmatched orders stay pending until a counterparty arrives.
+1. **Simulated prices** — the server moves `lastPrice` on `GET /assets/tick` and broadcasts `price_tick` over WebSocket. Players do not set the market.
+2. **Market order** (`mode: market`) — immediate fill against the exchange at `lastPrice` via `MarketTradeService`.
+3. **Post** (`mode: limit`) — locks cash (buy) or shares (sell) and enqueues at the **current** `lastPrice`. This is a resting offer in the book, not an arbitrary limit price in the UI.
+4. **FIFO matching** — when a buy and sell from different sessions cross (`buyPrice >= sellPrice`), `MatchingEngine` fills at the **resting sell price** (maker on the sell side).
+5. **Take** — aggressor hits a specific resting order at the maker’s posted price.
+6. **Session end** — `OrderCancellationService` cancels open orders, unlocks collateral, then deletes the portfolio. Other players no longer see ghost book rows.
+
+## WebSocket events
+
+Subscribe via `ws-gateway` on `/ws`. Channels: `price_tick`, `trade`, `leaderboard_update`, `orderbook_update`.
+
+## Development
+
+From `market/`:
+
+```bash
+npm run dev
+```
+
+Runs [`dev/server.js`](dev/server.js) — static frontend on port 3000, proxies `/api` and `/ws`.

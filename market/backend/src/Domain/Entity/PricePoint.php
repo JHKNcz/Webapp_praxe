@@ -36,4 +36,14 @@ final class PricePoint
             'ts' => $this->timestamp,
         ];
     }
+
+    /** @param array<string, mixed> $data */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            (string) ($data['assetId'] ?? ''),
+            (float) ($data['price'] ?? 0.0),
+            (int) ($data['ts'] ?? time())
+        );
+    }
 }

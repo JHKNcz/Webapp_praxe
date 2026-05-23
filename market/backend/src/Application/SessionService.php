@@ -7,14 +7,12 @@ namespace Market\Application;
 use DomainException;
 use Market\Domain\Entity\Portfolio;
 use Market\Domain\Entity\Session;
-use Market\Infrastructure\Storage\InMemory\PortfolioRepository;
-use Market\Infrastructure\Storage\InMemory\SessionRepository;
 
 final class SessionService
 {
     public function __construct(
-        private readonly SessionRepository $sessionRepository,
-        private readonly PortfolioRepository $portfolioRepository,
+        private readonly object $sessionRepository,
+        private readonly object $portfolioRepository,
         private readonly float $initialCash
     ) {
     }

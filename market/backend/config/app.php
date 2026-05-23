@@ -6,12 +6,17 @@ $debugEnv = getenv('APP_DEBUG');
 $debugValue = $debugEnv === false ? false : filter_var($debugEnv, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
 $appDebug = $debugValue === null ? false : $debugValue;
 
+$initialCashEnv = getenv('INITIAL_CASH');
+$initialCash = $initialCashEnv !== false && $initialCashEnv !== ''
+    ? (float) $initialCashEnv
+    : 10000.0;
+
 return [
     'app_name' => 'Market',
     'app_debug' => $appDebug,
-    'initial_cash' => 10000.0,
-    'price_update_interval_seconds' => 10,
-    'history_limit' => 20,
+    'initial_cash' => $initialCash,
+    'price_update_interval_seconds' => 5,
+    'history_limit' => 40,
     'leaderboard_limit' => 10,
     'cors_allowed_origins' => ['*'],
     'seed_assets' => [

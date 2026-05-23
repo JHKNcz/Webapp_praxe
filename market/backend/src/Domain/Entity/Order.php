@@ -98,6 +98,16 @@ final class Order
         return $this->remainingQty > 0;
     }
 
+    public function cancel(): void
+    {
+        if (!$this->isOpen()) {
+            throw new \DomainException('Order is not open');
+        }
+
+        $this->remainingQty = 0;
+        $this->status = 'cancelled';
+    }
+
     /** @return array<string, mixed> */
     public function toArray(): array
     {

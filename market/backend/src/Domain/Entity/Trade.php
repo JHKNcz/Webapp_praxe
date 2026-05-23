@@ -25,13 +25,33 @@ final class Trade
         float $price,
         int $quantity
     ): self {
-        return new self(
-            bin2hex(random_bytes(8)),
-            $buyOrder->getId(),
-            $sellOrder->getId(),
+        return self::fromSessions(
             $buyOrder->getSessionId(),
             $sellOrder->getSessionId(),
             $buyOrder->getAssetId(),
+            $price,
+            $quantity,
+            $buyOrder->getId(),
+            $sellOrder->getId()
+        );
+    }
+
+    public static function fromSessions(
+        string $buySessionId,
+        string $sellSessionId,
+        string $assetId,
+        float $price,
+        int $quantity,
+        string $buyOrderId = '',
+        string $sellOrderId = ''
+    ): self {
+        return new self(
+            bin2hex(random_bytes(8)),
+            $buyOrderId,
+            $sellOrderId,
+            $buySessionId,
+            $sellSessionId,
+            $assetId,
             $price,
             $quantity,
             time()

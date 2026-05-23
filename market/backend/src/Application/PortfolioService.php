@@ -6,15 +6,14 @@ namespace Market\Application;
 
 use DomainException;
 use Market\Domain\Entity\Portfolio;
-use Market\Infrastructure\Storage\InMemory\PortfolioRepository;
-use Market\Infrastructure\Storage\InMemory\SessionRepository;
 
 final class PortfolioService
 {
     public function __construct(
-        private readonly PortfolioRepository $portfolioRepository,
-        private readonly SessionRepository $sessionRepository,
-        private readonly AssetService $assetService
+        private readonly object $portfolioRepository,
+        private readonly object $sessionRepository,
+        private readonly AssetService $assetService,
+        private readonly float $initialCash = 10000.0
     ) {
     }
 
@@ -51,21 +50,34 @@ final class PortfolioService
 
         foreach ($portfolio->getHoldings() as $holding) {
             $currentPrice = $prices[$holding->getAssetId()] ?? 0.0;
+            $averagePrice = $holding->getAveragePrice();
+            $quantity = $holding->getQuantity();
+            $unrealizedPnl = round(($currentPrice - $averagePrice) * $quantity, 2);
 
             $holdings[] = [
                 'assetId' => $holding->getAssetId(),
-                'quantity' => $holding->getQuantity(),
-                'averagePrice' => $holding->getAveragePrice(),
+                'quantity' => $quantity,
+                'averagePrice' => $averagePrice,
                 'currentPrice' => $currentPrice,
-                'currentValue' => round($holding->getQuantity() * $currentPrice, 2),
+                'currentValue' => round($quantity * $currentPrice, 2),
+                'unrealizedPnl' => $unrealizedPnl,
             ];
         }
+
+        $totalValue = $portfolio->getTotalValue($prices);
+        $pnl = round($totalValue - $this->initialCash, 2);
+        $pnlPercent = $this->initialCash > 0
+            ? round(($pnl / $this->initialCash) * 100, 2)
+            : 0.0;
 
         return [
             'sessionId' => $sessionId,
             'cash' => $portfolio->getCash(),
             'holdings' => $holdings,
-            'totalValue' => $portfolio->getTotalValue($prices),
+            'totalValue' => $totalValue,
+            'initialCash' => $this->initialCash,
+            'pnl' => $pnl,
+            'pnlPercent' => $pnlPercent,
         ];
     }
 }

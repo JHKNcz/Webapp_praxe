@@ -29,7 +29,7 @@ final class InMemoryOrderRepository
     {
         $queueKey = $this->queueKey($assetId, $side);
 
-        while ($this->queues[$queueKey] !== []) {
+        while (($this->queues[$queueKey] ?? []) !== []) {
             $orderId = array_shift($this->queues[$queueKey]);
             $order = $this->orders[$orderId] ?? null;
 
@@ -46,7 +46,43 @@ final class InMemoryOrderRepository
     public function requeueFront(Order $order): void
     {
         $queueKey = $this->queueKey($order->getAssetId(), $order->getSide());
+        $this->queues[$queueKey] ??= [];
         array_unshift($this->queues[$queueKey], $order->getId());
+    }
+
+    public function requeueBack(Order $order): void
+    {
+        $queueKey = $this->queueKey($order->getAssetId(), $order->getSide());
+        $this->queues[$queueKey] ??= [];
+        $this->queues[$queueKey][] = $order->getId();
+    }
+
+    public function removeFromQueue(Order $order): void
+    {
+        $queueKey = $this->queueKey($order->getAssetId(), $order->getSide());
+        $ids = $this->queues[$queueKey] ?? [];
+        $this->queues[$queueKey] = array_values(array_filter(
+            $ids,
+            static fn (string $orderId): bool => $orderId !== $order->getId()
+        ));
+    }
+
+    /** @return array<int, Order> */
+    public function listOpenForAsset(string $assetId): array
+    {
+        $orders = [];
+
+        foreach (['buy', 'sell'] as $side) {
+            foreach ($this->queues[$this->queueKey($assetId, $side)] ?? [] as $orderId) {
+                $order = $this->orders[$orderId] ?? null;
+
+                if ($order !== null && $order->isOpen()) {
+                    $orders[] = $order;
+                }
+            }
+        }
+
+        return $orders;
     }
 
     public function save(Order $order): void
@@ -65,6 +101,15 @@ final class InMemoryOrderRepository
         return array_values(array_filter(
             $this->orders,
             static fn (Order $order): bool => $order->getSessionId() === $sessionId && $order->isOpen()
+        ));
+    }
+
+    /** @return array<int, Order> */
+    public function findOpenForAsset(string $assetId): array
+    {
+        return array_values(array_filter(
+            $this->orders,
+            static fn (Order $order): bool => $order->getAssetId() === $assetId && $order->isOpen()
         ));
     }
 

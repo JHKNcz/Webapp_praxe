@@ -30,8 +30,23 @@ export const api = {
     });
   },
 
+  resumeSession(sessionId) {
+    return request('/session/resume', {
+      method: 'POST',
+      body: JSON.stringify({ sessionId }),
+    });
+  },
+
   getAssets() {
     return request('/assets');
+  },
+
+  tickAssets() {
+    return request('/assets/tick');
+  },
+
+  async getAssetDetail(assetId, limit = 40) {
+    return request(`/assets/${encodeURIComponent(assetId)}?limit=${limit}`);
   },
 
   async getPortfolio(sessionId) {
@@ -39,10 +54,18 @@ export const api = {
     return payload.portfolio;
   },
 
-  async placeOrder(sessionId, assetId, side, quantity) {
+  async placeOrder(sessionId, assetId, side, quantity, mode = 'market') {
     const payload = await request('/orders', {
       method: 'POST',
-      body: JSON.stringify({ sessionId, assetId, side, quantity }),
+      body: JSON.stringify({ sessionId, assetId, side, quantity, mode }),
+    });
+    return payload;
+  },
+
+  async takeOrder(sessionId, orderId, quantity) {
+    const payload = await request(`/orders/${encodeURIComponent(orderId)}/take`, {
+      method: 'POST',
+      body: JSON.stringify({ sessionId, quantity }),
     });
     return payload;
   },
@@ -54,6 +77,13 @@ export const api = {
 
   async getOrderBook(assetId) {
     const payload = await request(`/orderbook/${encodeURIComponent(assetId)}`);
+    return payload;
+  },
+
+  async getTransactions(sessionId, limit = 50) {
+    const payload = await request(
+      `/transactions?sessionId=${encodeURIComponent(sessionId)}&limit=${limit}`
+    );
     return payload;
   },
 

@@ -10,10 +10,10 @@
   <div id="app">
     <section id="lobby" class="panel">
       <h1>Market.io</h1>
-      <p>Simulovana burza ve stylu .io - maximalizuj hodnotu portfolia.</p>
-      <label for="nickname">Nickname</label>
+      <p>Simulovaná burza — maximalizuj hodnotu portfolia.</p>
+      <label for="nickname">Přezdívka</label>
       <input id="nickname" type="text" maxlength="16" placeholder="Trader42" autocomplete="off">
-      <button id="enter-btn" type="button">Enter Market</button>
+      <button id="enter-btn" type="button">Vstoupit na burzu</button>
       <p id="lobby-error" class="error hidden"></p>
     </section>
 
@@ -21,40 +21,59 @@
       <header class="topbar">
         <span class="brand">Market.io</span>
         <span id="player-name"></span>
+        <span id="topbar-price" class="topbar-price"></span>
         <span id="session-value"></span>
-        <button id="end-btn" type="button">End Session</button>
+        <button id="end-btn" type="button">Ukončit session</button>
       </header>
 
       <main class="grid">
         <section class="panel">
-          <h2>Assets</h2>
+          <h2>Instrumenty</h2>
           <ul id="asset-list"></ul>
         </section>
 
         <section class="panel">
           <h2>Portfolio</h2>
           <div id="portfolio"></div>
-          <h3>Order book</h3>
-          <div id="orderbook"></div>
+          <h3>Order book (hráči)</h3>
+          <p class="hint">Klik na Buy/Sell u řádku = obchod s hráčem (množství z pole níže).</p>
+          <div id="orderbook" class="orderbook"></div>
         </section>
 
         <section class="panel">
-          <h2>Trade</h2>
-          <p>Selected: <strong id="selected-asset">-</strong></p>
-          <label for="quantity">Quantity</label>
+          <h2>Obchodování</h2>
+          <div id="live-price" class="live-price">
+            <span class="live-price-label">Živá cena</span>
+            <span id="live-price-name" class="live-price-name">—</span>
+            <span id="live-price-value" class="live-price-value">—</span>
+            <span id="live-price-time" class="live-price-time"></span>
+          </div>
+          <div id="price-chart-wrap" class="price-chart-wrap">
+            <span class="live-price-label">Vývoj ceny</span>
+            <svg id="price-chart" class="price-chart" viewBox="0 0 320 120" preserveAspectRatio="none" aria-hidden="true"></svg>
+          </div>
+          <p>Vybráno: <strong id="selected-asset">-</strong></p>
+          <label for="quantity">Množství</label>
           <input id="quantity" type="number" min="1" value="1">
+          <p class="hint">Market = okamžitě proti burze. Post = nabídka do booku za aktuální tržní cenu.</p>
           <div class="actions">
-            <button id="buy-btn" type="button">Buy</button>
-            <button id="sell-btn" type="button" class="danger">Sell</button>
+            <button id="buy-btn" type="button">Market Nákup</button>
+            <button id="sell-btn" type="button" class="danger">Market Prodej</button>
+          </div>
+          <div class="actions">
+            <button id="post-buy-btn" type="button" class="secondary">Post nákup (tržní)</button>
+            <button id="post-sell-btn" type="button" class="secondary danger">Post prodej (tržní)</button>
           </div>
           <p id="trade-msg" class="hint"></p>
-          <h3>Open orders</h3>
+          <h3>Otevřené objednávky</h3>
           <ul id="open-orders"></ul>
         </section>
 
         <section class="panel">
-          <h2>Leaderboard</h2>
+          <h2>Žebříček</h2>
           <ol id="leaderboard"></ol>
+          <h3>Historie obchodů</h3>
+          <div id="transactions" class="transactions"></div>
         </section>
       </main>
     </section>

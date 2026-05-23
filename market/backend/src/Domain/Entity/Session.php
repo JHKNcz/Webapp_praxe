@@ -24,6 +24,11 @@ final class Session
         return $this->nickname;
     }
 
+    public function getCreatedAt(): int
+    {
+        return $this->createdAt;
+    }
+
     public function isActive(): bool
     {
         return $this->endedAt === null;
@@ -32,6 +37,11 @@ final class Session
     public function end(int $timestamp): void
     {
         $this->endedAt = $timestamp;
+    }
+
+    public function getEndedAt(): ?int
+    {
+        return $this->endedAt;
     }
 
     public function toArray(): array

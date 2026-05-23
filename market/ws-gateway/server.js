@@ -5,7 +5,7 @@ import Redis from 'ioredis';
 const port = Number(process.env.WS_PORT || 3001);
 const redisUrl = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
 
-const channels = ['market:prices', 'market:trades', 'market:leaderboard'];
+const channels = ['market:prices', 'market:trades', 'market:leaderboard', 'market:orderbook'];
 const clients = new Set();
 
 const server = createServer((req, res) => {

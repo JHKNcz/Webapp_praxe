@@ -6,19 +6,19 @@ namespace Market\Application;
 
 use Market\Domain\Entity\Asset;
 use Market\Domain\Entity\PricePoint;
-use Market\Infrastructure\Storage\InMemory\AssetRepository;
-use Market\Infrastructure\Storage\InMemory\PriceHistoryRepository;
 
 final class AssetService
 {
     public function __construct(
-        private readonly AssetRepository $assetRepository,
-        private readonly PriceHistoryRepository $priceHistoryRepository,
+        private readonly object $assetRepository,
+        private readonly object $priceHistoryRepository,
         private readonly PriceGeneratorService $priceGeneratorService,
         private readonly int $priceUpdateIntervalSeconds,
         private readonly int $historyLimit,
         private readonly bool $debug,
-        private readonly ?EventPublisher $eventPublisher = null
+        private readonly ?EventPublisher $eventPublisher = null,
+        private readonly ?LeaderboardService $leaderboardService = null,
+        private readonly ?ActiveSessionRegistry $activeSessionRegistry = null
     ) {
     }
 
@@ -79,7 +79,11 @@ final class AssetService
             if ($lastPricePoint === null) {
                 $initial = new PricePoint($asset->getId(), $asset->getLastPrice(), time());
                 $this->priceHistoryRepository->append($initial);
-                continue;
+                $lastPricePoint = $initial;
+
+                if (!$forceTick) {
+                    continue;
+                }
             }
 
             if (!$forceTick && (time() - $lastPricePoint->getTimestamp()) < $this->priceUpdateIntervalSeconds) {
@@ -105,6 +109,10 @@ final class AssetService
         if ($updated && $this->eventPublisher !== null) {
             $items = array_map(static fn (Asset $asset): array => $asset->toArray(), $this->assetRepository->all());
             $this->eventPublisher->publishPriceTick($items);
+
+            if ($this->leaderboardService !== null && $this->activeSessionRegistry !== null) {
+                $this->leaderboardService->refreshAllActive($this->activeSessionRegistry);
+            }
         }
     }
 }

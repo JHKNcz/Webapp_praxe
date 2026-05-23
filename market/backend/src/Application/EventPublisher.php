@@ -9,6 +9,7 @@ final class EventPublisher
     public const CHANNEL_PRICES = 'market:prices';
     public const CHANNEL_TRADES = 'market:trades';
     public const CHANNEL_LEADERBOARD = 'market:leaderboard';
+    public const CHANNEL_ORDERBOOK = 'market:orderbook';
 
     public function __construct(private readonly ?object $redisClient = null)
     {
@@ -37,6 +38,16 @@ final class EventPublisher
         $this->publish(self::CHANNEL_LEADERBOARD, [
             'type' => 'leaderboard_update',
             'items' => $top,
+            'ts' => time(),
+        ]);
+    }
+
+    public function publishOrderBook(string $assetId, array $orderbook): void
+    {
+        $this->publish(self::CHANNEL_ORDERBOOK, [
+            'type' => 'orderbook_update',
+            'assetId' => $assetId,
+            'orderbook' => $orderbook,
             'ts' => time(),
         ]);
     }

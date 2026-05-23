@@ -21,13 +21,29 @@ final class OrderController
         $assetId = (string) $request->input('assetId', '');
         $side = (string) $request->input('side', '');
         $quantity = (int) $request->input('quantity', 0);
+        $mode = (string) $request->input('mode', 'market');
 
         if ($sessionId === '' || $assetId === '' || $side === '' || $quantity <= 0) {
             return JsonResponse::error('sessionId, assetId, side and quantity are required', 422, 'validation_error');
         }
 
         return JsonResponse::success([
-            'result' => $this->orderService->placeOrder($sessionId, $assetId, $side, $quantity),
+            'result' => $this->orderService->placeOrder($sessionId, $assetId, $side, $quantity, $mode),
+        ]);
+    }
+
+    public function take(Request $request, array $params = []): Response
+    {
+        $orderId = (string) ($params['id'] ?? '');
+        $sessionId = (string) $request->input('sessionId', '');
+        $quantity = (int) $request->input('quantity', 0);
+
+        if ($orderId === '' || $sessionId === '' || $quantity <= 0) {
+            return JsonResponse::error('order id, sessionId and quantity are required', 422, 'validation_error');
+        }
+
+        return JsonResponse::success([
+            'result' => $this->orderService->takeOrder($sessionId, $orderId, $quantity),
         ]);
     }
 

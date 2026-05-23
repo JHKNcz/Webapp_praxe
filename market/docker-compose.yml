@@ -10,6 +10,7 @@ services:
     restart: unless-stopped
     volumes:
       - ./backend:/app
+      - api_vendor:/app/vendor
     working_dir: /app
     command: php -S 0.0.0.0:8000 -t public
     environment:
@@ -44,3 +45,4 @@ services:
 
 volumes:
   redis-data:
+  api_vendor:
