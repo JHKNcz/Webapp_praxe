@@ -1,8 +1,29 @@
 # Market.io
 
-Multiplayer .io style market simulation. Players join with a nickname, trade assets at simulated prices via hybrid market/P2P order matching, and compete on a Redis-backed leaderboard.
+Multiplayer .io-style market simulation for short sessions. Each player joins with a nickname, receives starting cash, trades simulated assets, and competes on a live leaderboard until the session ends.
 
-Everything lives under this directory — safe to deploy alongside other self-hosted apps.
+**Design goals**
+
+- Session-only play (no permanent accounts); state in Redis for the open window
+- Solo-friendly **market** orders (instant fill vs simulated exchange) plus optional **P2P** order book
+- Simple browser UI with live prices, portfolio PnL, order book, and transaction history
+- Self-hosted stack (Docker Compose) that can sit behind your existing nginx
+
+Everything lives under this directory.
+
+## Repository layout
+
+```
+market/
+  backend/          PHP API (Application / Domain / Infrastructure)
+  frontend/         Static UI (vanilla JS)
+  ws-gateway/       Redis pub/sub → WebSocket fan-out
+  dev/              Local dev proxy (port 3000)
+  deploy/           Example nginx config
+  docker-compose.yml
+```
+
+Backend details: [`backend/ARCHITECTURE.md`](backend/ARCHITECTURE.md).
 
 ## Stack
 
@@ -10,9 +31,9 @@ Everything lives under this directory — safe to deploy alongside other self-ho
 |---------|------|-------------------|
 | `api` | PHP REST API | `127.0.0.1:9080` |
 | `ws-gateway` | WebSocket fan-out (Redis pub/sub) | `127.0.0.1:9081` |
-| `redis` | Order queues, leaderboard, pub/sub | internal only |
+| `redis` | Orders, portfolios, leaderboard, pub/sub | internal only |
 
-Static frontend files: [`frontend/`](frontend/) — serve via your existing nginx.
+Static frontend: [`frontend/`](frontend/) — in production, serve as site root and proxy `/api` and `/ws`.
 
 ## Quick start
 
@@ -20,38 +41,26 @@ Static frontend files: [`frontend/`](frontend/) — serve via your existing ngin
 cd market
 cp .env.example .env
 docker compose up -d --build
+npm run dev
 ```
 
-Run tests locally:
-
-```bash
-cd backend
-composer install
-php tests/run.php
-```
+Open **http://localhost:3000** (dev proxy). API alone: **http://127.0.0.1:9080**.
 
 ## Test on your PC (before server deploy)
 
 ### Prerequisites
 
-1. [Docker Desktop](https://www.docker.com/products/docker-desktop/) (Windows)
-2. [Node.js 20+](https://nodejs.org/) (for local dev proxy only)
+1. [Docker Desktop](https://www.docker.com/products/docker-desktop/) (Windows/macOS/Linux)
+2. [Node.js 20+](https://nodejs.org/) (for `npm run dev` only)
 
 ### Steps
 
 ```powershell
-cd d:\Commerzbank\Webapp_praxe\market
+cd path\to\Webapp_praxe\market
 copy .env.example .env
 docker compose up -d --build
-```
-
-Wait until containers are healthy, then start the dev proxy (serves frontend + `/api` + `/ws`):
-
-```powershell
 npm run dev
 ```
-
-Open **http://localhost:3000** in your browser.
 
 ### Verify backend
 
@@ -63,6 +72,8 @@ docker compose exec -T api php tests/smoke.php
 docker compose exec -T api php tests/price_persistence.php
 ```
 
+Expected: **27/27** tests in `run.php`, smoke OK, price persistence shows changing `lastPrice` in Redis.
+
 ### Stop
 
 ```powershell
@@ -71,7 +82,7 @@ docker compose down
 
 ### Without Docker (advanced)
 
-Install PHP 8.1+, Composer, Redis (optional). Without Redis the app falls back to in-memory storage (fine for solo testing):
+PHP 8.1+, Composer. Redis optional — without it the API uses in-memory storage (prices reset per request; not suitable for real play).
 
 ```powershell
 cd backend
@@ -79,69 +90,86 @@ composer install
 php -S 127.0.0.1:9080 -t public
 ```
 
-In another terminal, run `ws-gateway` only if Redis is available. For a quick API smoke test, the PHP server alone is enough.
+Run `ws-gateway` only when Redis is available.
 
 ---
 
-## External nginx (production / your server)
+## External nginx (production)
 
-1. Copy or mount `frontend/` as the site root.
-2. Proxy `/api/` → `http://127.0.0.1:9080` (strip `/api` prefix).
+1. Mount or copy `frontend/` as the site root.
+2. Proxy `/api/` → `http://127.0.0.1:9080` (strip `/api` prefix in the PHP app).
 3. Proxy `/ws` → `http://127.0.0.1:9081` with WebSocket upgrade headers.
 
-See [`deploy/external-nginx.example.conf`](deploy/external-nginx.example.conf) for a full server block template.
+Template: [`deploy/external-nginx.example.conf`](deploy/external-nginx.example.conf).
 
 ## Environment
 
+Copy [`.env.example`](.env.example) to `.env`. Compose passes variables into the `api` service.
+
 | Variable | Description | Default |
 |----------|-------------|---------|
+| `APP_DEBUG` | Verbose price logs in API | `false` |
 | `API_PORT` | Host port for PHP API | `9080` |
 | `WS_HOST_PORT` | Host port for WebSocket gateway | `9081` |
 | `REDIS_URL` | Redis connection | `redis://redis:6379` |
-| `REDIS_PREFIX` | Key prefix (isolation from other apps) | `market:` |
-| `INITIAL_CASH` | Starting cash per session | `10000` |
+| `REDIS_PREFIX` | Key prefix (isolate from other apps) | `market:` |
+| `INITIAL_CASH` | Starting cash per session (read by `config/app.php`) | `10000` |
+
+After changing `INITIAL_CASH`, recreate containers: `docker compose up -d --build`.
 
 ## API (prefix with `/api` in production)
 
 ### Session
 
-- `POST /session/start` — `{ nickname }` — create session, register for live leaderboard
-- `POST /session/resume` — `{ sessionId }` — re-register after browser reload (localStorage restore)
-- `POST /session/end` — `{ sessionId }` — cancel open orders, record score, delete session data
+| Method | Path | Body | Notes |
+|--------|------|------|--------|
+| `POST` | `/session/start` | `{ "nickname": "Trader42" }` | Creates session + portfolio |
+| `POST` | `/session/resume` | `{ "sessionId": "..." }` | After browser reload (localStorage) |
+| `POST` | `/session/end` | `{ "sessionId": "..." }` | Cancels open orders, hall-of-fame score |
 
-### Assets & portfolio
+### Assets and portfolio
 
-- `GET /assets` — list assets with `lastPrice`
-- `GET /assets/tick` — advance simulated prices (also drives live leaderboard sync)
-- `GET /assets/{id}?limit=40` — price history
-- `GET /portfolio?sessionId=...` — cash, holdings, PnL summary
+| Method | Path | Notes |
+|--------|------|--------|
+| `GET` | `/assets` | All assets + `lastPrice` |
+| `GET` | `/assets/tick` | Force price tick + live leaderboard sync |
+| `GET` | `/assets/{id}?limit=40` | Price history |
+| `GET` | `/portfolio?sessionId=...` | Cash, holdings, PnL |
 
-### Orders & book
+### Orders and book
 
-- `POST /orders` — `{ sessionId, assetId, side, quantity, mode }`
-  - `mode: "market"` — instant fill vs exchange at current `lastPrice`
-  - `mode: "limit"` — post to FIFO order book at current `lastPrice` (not a custom limit price)
-- `POST /orders/{id}/take` — `{ sessionId, quantity }` — take a resting player order
-- `GET /orders?sessionId=...` — open orders for session
-- `GET /orderbook/{assetId}` — bids/asks snapshot
+| Method | Path | Body | Notes |
+|--------|------|------|--------|
+| `POST` | `/orders` | `{ sessionId, assetId, side, quantity, mode }` | `mode`: `"market"` or `"limit"` |
+| `POST` | `/orders/{id}/take` | `{ sessionId, quantity }` | Fill against resting order |
+| `GET` | `/orders?sessionId=...` | Open orders for session |
+| `GET` | `/orderbook/{assetId}` | Bids/asks with nicknames |
 
 ### Other
 
-- `GET /transactions?sessionId=&limit=50` — market and P2P trade history
-- `GET /leaderboard` — live top players
+| Method | Path | Notes |
+|--------|------|--------|
+| `GET` | `/transactions?sessionId=&limit=50` | Market + P2P history |
+| `GET` | `/leaderboard` | Live top sessions by portfolio value |
 
 ## How trading works
 
-1. **Simulated prices** — the server moves `lastPrice` on `GET /assets/tick` and broadcasts `price_tick` over WebSocket. Players do not set the market.
-2. **Market order** (`mode: market`) — immediate fill against the exchange at `lastPrice` via `MarketTradeService`.
-3. **Post** (`mode: limit`) — locks cash (buy) or shares (sell) and enqueues at the **current** `lastPrice`. This is a resting offer in the book, not an arbitrary limit price in the UI.
-4. **FIFO matching** — when a buy and sell from different sessions cross (`buyPrice >= sellPrice`), `MatchingEngine` fills at the **resting sell price** (maker on the sell side).
-5. **Take** — aggressor hits a specific resting order at the maker’s posted price.
-6. **Session end** — `OrderCancellationService` cancels open orders, unlocks collateral, then deletes the portfolio. Other players no longer see ghost book rows.
+1. **Simulated prices** — `PriceGeneratorService` updates `lastPrice` on tick (`GET /assets/tick`, WebSocket `price_tick`). Players do not set the market.
+2. **Market** (`mode: market`) — instant fill at `lastPrice` via `MarketTradeService` (solo vs exchange).
+3. **Post** (`mode: limit`) — locks cash (buy) or shares (sell), enqueues at **current** `lastPrice` (not a custom limit price in the UI).
+4. **FIFO matching** — different sessions only; match when `buyPrice >= sellPrice`, fill at **resting sell price**. Same-session buy+sell at the head of the queue are skipped without blocking other pairs.
+5. **Take** — hit a specific resting order at the maker’s price.
+6. **Collateral** — locked funds/shares return when an order is fully filled, cancelled on session end, or released after partial fills on the remaining quantity.
+7. **Session end** — `OrderCancellationService` removes ghost orders from the book and unlocks collateral before the portfolio is deleted.
 
 ## WebSocket events
 
-Subscribe via `ws-gateway` on `/ws`. Channels: `price_tick`, `trade`, `leaderboard_update`, `orderbook_update`.
+Connect via `ws-gateway` at `/ws` (proxied as `ws://host/ws` in dev). Event types:
+
+- `price_tick` — `{ items: [{ id, name, lastPrice }, ...] }`
+- `trade` — executed trade payload
+- `leaderboard_update` — `{ items: [...] }`
+- `orderbook_update` — `{ assetId, orderbook: { bids, asks } }`
 
 ## Development
 
@@ -151,4 +179,20 @@ From `market/`:
 npm run dev
 ```
 
-Runs [`dev/server.js`](dev/server.js) — static frontend on port 3000, proxies `/api` and `/ws`.
+Runs [`dev/server.js`](dev/server.js): static files on port **3000**, proxies `/api` → API and `/ws` → gateway.
+
+Port already in use:
+
+```powershell
+$env:DEV_PORT=3001; npm run dev
+```
+
+## Tests
+
+| Command | Purpose |
+|---------|---------|
+| `docker compose exec -T api php tests/run.php` | 27 unit/integration tests (portfolio, matching, session, API) |
+| `docker compose exec -T api php tests/smoke.php` | HTTP smoke |
+| `docker compose exec -T api php tests/price_persistence.php` | Redis prices change between ticks |
+
+Local (no Docker): `cd backend && composer install && php tests/run.php` (in-memory only).
