@@ -1,0 +1,46 @@
+# Self-contained Market.io stack — no bundled nginx.
+# Bind ports to localhost; point your existing reverse proxy here.
+name: market-io
+
+services:
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    volumes:
+      - ./backend:/app
+    working_dir: /app
+    command: php -S 0.0.0.0:8000 -t public
+    environment:
+      APP_DEBUG: ${APP_DEBUG:-false}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      REDIS_PREFIX: ${REDIS_PREFIX:-market:}
+      INITIAL_CASH: ${INITIAL_CASH:-10000}
+    ports:
+      - "127.0.0.1:${API_PORT:-9080}:8000"
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+
+  ws-gateway:
+    build:
+      context: ./ws-gateway
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      WS_PORT: "3001"
+    ports:
+      - "127.0.0.1:${WS_HOST_PORT:-9081}:3001"
+    depends_on:
+      - redis
+
+volumes:
+  redis-data:

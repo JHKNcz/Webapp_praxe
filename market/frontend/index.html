@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Market.io</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div id="app">
+    <section id="lobby" class="panel">
+      <h1>Market.io</h1>
+      <p>Simulovana burza ve stylu .io - maximalizuj hodnotu portfolia.</p>
+      <label for="nickname">Nickname</label>
+      <input id="nickname" type="text" maxlength="16" placeholder="Trader42" autocomplete="off">
+      <button id="enter-btn" type="button">Enter Market</button>
+      <p id="lobby-error" class="error hidden"></p>
+    </section>
+
+    <section id="game" class="hidden">
+      <header class="topbar">
+        <span class="brand">Market.io</span>
+        <span id="player-name"></span>
+        <span id="session-value"></span>
+        <button id="end-btn" type="button">End Session</button>
+      </header>
+
+      <main class="grid">
+        <section class="panel">
+          <h2>Assets</h2>
+          <ul id="asset-list"></ul>
+        </section>
+
+        <section class="panel">
+          <h2>Portfolio</h2>
+          <div id="portfolio"></div>
+          <h3>Order book</h3>
+          <div id="orderbook"></div>
+        </section>
+
+        <section class="panel">
+          <h2>Trade</h2>
+          <p>Selected: <strong id="selected-asset">-</strong></p>
+          <label for="quantity">Quantity</label>
+          <input id="quantity" type="number" min="1" value="1">
+          <div class="actions">
+            <button id="buy-btn" type="button">Buy</button>
+            <button id="sell-btn" type="button" class="danger">Sell</button>
+          </div>
+          <p id="trade-msg" class="hint"></p>
+          <h3>Open orders</h3>
+          <ul id="open-orders"></ul>
+        </section>
+
+        <section class="panel">
+          <h2>Leaderboard</h2>
+          <ol id="leaderboard"></ol>
+        </section>
+      </main>
+    </section>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>

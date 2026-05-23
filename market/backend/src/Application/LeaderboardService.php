@@ -6,15 +6,16 @@ namespace Market\Application;
 
 use DomainException;
 use Market\Domain\Entity\LeaderboardEntry;
-use Market\Infrastructure\Storage\InMemory\LeaderboardRepository;
 use Market\Infrastructure\Storage\InMemory\SessionRepository;
 
 final class LeaderboardService
 {
     public function __construct(
-        private readonly LeaderboardRepository $leaderboardRepository,
+        private readonly object $leaderboardRepository,
         private readonly SessionRepository $sessionRepository,
-        private readonly PortfolioService $portfolioService
+        private readonly PortfolioService $portfolioService,
+        private readonly EventPublisher $eventPublisher,
+        private readonly int $leaderboardLimit = 10
     ) {
     }
 
@@ -29,6 +30,9 @@ final class LeaderboardService
         $summary = $this->portfolioService->getPortfolioSummary($sessionId);
         $entry = new LeaderboardEntry($sessionId, $displayName, (float) $summary['totalValue'], time());
         $this->leaderboardRepository->add($entry);
+
+        $top = $this->top($this->leaderboardLimit);
+        $this->eventPublisher->publishLeaderboard($top);
 
         return $entry->toArray();
     }

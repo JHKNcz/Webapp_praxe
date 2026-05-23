@@ -1,122 +1,64 @@
 # Backend architektura (PHP)
 
-Tento dokument definuje **jasnou vizi backendu** pro Market (io simulace trhu), aby bylo možné konzistentně vyvíjet a rozšiřovat projekt.
+## Cíle
 
-## 1) Cíle a principy
-- **Jasné vrstvy**: HTTP → Application → Domain → Infrastructure
-- **Server je zdroj cen aktiv**: ceny a validace transakcí jen na serveru
-- **Session-only**: bez trvalých účtů, sessionId identifikuje hráče
-- **Jednoduchá rozšiřitelnost**: snadné přidání dalších aktiv, leaderboardu a DB
+- Jasné vrstvy: HTTP → Application → Domain → Infrastructure
+- Simulované ceny na serveru (hráči cenu neovlivňují)
+- FIFO P2P matching mezi hráči za aktuální `lastPrice`
+- Session-only identita s nickname při vstupu
+- Redis pro leaderboard, order queues a pub/sub (WebSocket gateway)
 
-## 2) Struktura složek (návrh)
+## Struktura
+
 ```
 backend/
-  public/
-    index.php
-    assets/
+  public/index.php          # Front controller
+  bootstrap.php             # DI wiring
+  config/routes.php
   src/
-    Http/
-      Router/
-      Middleware/
     Controller/
-      AssetController.php
-      TradeController.php
-      SessionController.php
-      PortfolioController.php
     Application/
       AssetService.php
-      PriceGeneratorService.php
-      TradeService.php
-      PortfolioService.php
-      SessionService.php
-    Domain/
-      Entity/
-        Asset.php
-        PricePoint.php
-        Portfolio.php
-        Holding.php
-        Session.php
-      ValueObject/
-        Money.php
-        AssetId.php
-    Infrastructure/
-      Storage/
-        InMemory/
-        Sqlite/
-      Repository/
-        AssetRepository.php
-        PortfolioRepository.php
-        PriceHistoryRepository.php
-  config/
-    routes.php
-    app.php
-  storage/
-    logs/
-    cache/
-  tests/
+      OrderService.php
+      MatchingEngine.php
+      EventPublisher.php
+    Domain/Entity/
+      Order.php, Trade.php, Portfolio.php, Session.php
+    Infrastructure/Storage/
+      InMemory/               # lokální dev / testy
+      Redis/                  # produkce (Docker)
+  tests/run.php
 ```
 
-## 3) Vrstvy a odpovědnosti
+## Order book + FIFO
 
-### 3.1 HTTP vrstva
-- **Router**: mapuje HTTP method + URL → Controller
-- **Controller**: překládá HTTP požadavek do volání služeb
+- Hráč posílá `{ side, quantity }` — market order za simulovanou cenu
+- Buy: rezervace hotovosti (`Portfolio::lockCash`)
+- Sell: rezervace akcií (`Portfolio::lockShares`)
+- Fronty v Redis LIST (`LPUSH` / `RPOP`) nebo InMemory pro testy
+- `MatchingEngine` páruje nejstarší buy se nejstarším sell, partial fill podporován
 
-### 3.2 Application vrstva
-- **Services**: aplikační logika (obchod, validace, výpočet portfolia)
-- **Use cases**: start session, buy/sell, get asset, get portfolio
+## Redis
 
-### 3.3 Domain vrstva
-- **Entity a ValueObjects**: pravidla a modely hry
-- **Invarianta**: hotovost nesmí být záporná, quantity > 0
+| Klíč / kanál | Účel |
+|--------------|------|
+| `{prefix}leaderboard:global` | Sorted set — top scores |
+| `{prefix}orders:{assetId}:{side}` | FIFO fronta |
+| `{prefix}order:{id}` | Hash — detail orderu |
+| `market:prices` | Pub/sub — price ticks |
+| `market:trades` | Pub/sub — executed trades |
+| `market:leaderboard` | Pub/sub — leaderboard updates |
 
-### 3.4 Infrastructure
-- **Storage**: ukládání (in‑memory nebo SQLite/MySQL)
-- **Repositories**: izolace persistence
+## WebSocket
 
-## 4) Doménové modely (minimální)
-- **Asset**: id, name, lastPrice
-- **PricePoint**: assetId, price, timestamp
-- **Portfolio**: cash, holdings[]
-- **Holding**: assetId, quantity, avgPrice
-- **Session**: sessionId, createdAt, portfolioId
+Node.js `ws-gateway` subscribe na Redis kanály a broadcastuje klientům. PHP neobsahuje WS server.
 
-## 5) API kontrakty (MVP)
+## Deploy
 
-### Session
-- `POST /session/start`
-  - Response: `{ sessionId, cash }`
+Docker Compose stack (`market-io` project name) binduje API a WS na localhost. Externí nginx servíruje `frontend/` a proxyuje `/api` a `/ws` — viz `deploy/external-nginx.example.conf`.
 
-### Assets
-- `GET /assets`
-  - Response: `{ items: [{ id, name, lastPrice }] }`
-- `GET /assets/{id}`
-  - Response: `{ id, name, lastPrice, history: [ { price, ts } ] }`
+## Testy
 
-### Trade
-- `POST /trade/buy`
-  - Body: `{ assetId, quantity }`
-  - Response: `{ ok: true, cash, holding }`
-- `POST /trade/sell`
-  - Body: `{ assetId, quantity }`
-  - Response: `{ ok: true, cash, holding }`
-
-### Portfolio
-- `GET /portfolio`
-  - Response: `{ cash, holdings, totalValue }`
-
-## 6) Generování cen (serverový tick)
-- **MVP**: generace cen při requestu (lazy) + ukládání posledních N bodů
-- **Později**: cron tick každých X sekund a push na klienty
-
-## 7) Storage
-- **MVP**: In‑memory repository (rychlé, ale bez persistence)
-- **Později**: SQLite → MySQL (stejná API vrstva)
-
-## 8) Testovací strategie (základ)
-- **Unit**: doménová pravidla (`Portfolio`, `TradeService`)
-- **Integration**: API endpointy (`/trade/buy`, `/portfolio`)
-
----
-
-Pokud chceš, můžu doplnit konkrétní skeleton souborů a minimální router + controller implementace.
+```bash
+cd backend && composer install && php tests/run.php
+```

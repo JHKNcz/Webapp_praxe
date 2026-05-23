@@ -19,6 +19,21 @@ final class LeaderboardEntry
         return round($this->score, 2);
     }
 
+    public function getSessionId(): string
+    {
+        return $this->sessionId;
+    }
+
+    public function getDisplayName(): string
+    {
+        return $this->displayName;
+    }
+
+    public function getCreatedAt(): int
+    {
+        return $this->createdAt;
+    }
+
     public function toArray(): array
     {
         return [

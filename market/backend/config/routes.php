@@ -9,7 +9,8 @@ return [
     ['method' => 'GET', 'path' => '/assets/tick', 'controller' => 'asset', 'action' => 'tick'],
     ['method' => 'GET', 'path' => '/assets/{id}', 'controller' => 'asset', 'action' => 'show'],
     ['method' => 'GET', 'path' => '/portfolio', 'controller' => 'portfolio', 'action' => 'show'],
-    ['method' => 'POST', 'path' => '/trade/buy', 'controller' => 'trade', 'action' => 'buy'],
-    ['method' => 'POST', 'path' => '/trade/sell', 'controller' => 'trade', 'action' => 'sell'],
+    ['method' => 'POST', 'path' => '/orders', 'controller' => 'order', 'action' => 'store'],
+    ['method' => 'GET', 'path' => '/orders', 'controller' => 'order', 'action' => 'index'],
+    ['method' => 'GET', 'path' => '/orderbook/{id}', 'controller' => 'order', 'action' => 'book'],
     ['method' => 'GET', 'path' => '/leaderboard', 'controller' => 'leaderboard', 'action' => 'index'],
 ];

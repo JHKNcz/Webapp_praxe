@@ -20,25 +20,33 @@ final class SessionController
 
     public function start(Request $request, array $params = []): Response
     {
+        $nickname = (string) $request->input('nickname', '');
+
+        if ($nickname === '') {
+            return JsonResponse::error('nickname is required', 422, 'validation_error');
+        }
+
         return JsonResponse::success([
-            'session' => $this->sessionService->startSession(),
+            'session' => $this->sessionService->startSession($nickname),
         ]);
     }
 
     public function end(Request $request, array $params = []): Response
     {
         $sessionId = (string) $request->input('sessionId', '');
-        $displayName = (string) $request->input('displayName', 'Guest');
 
         if ($sessionId === '') {
             return JsonResponse::error('sessionId is required', 422, 'validation_error');
         }
 
+        $session = $this->sessionService->getSession($sessionId);
+        $displayName = $session?->getNickname() ?? 'Guest';
+
         $leaderboardEntry = $this->leaderboardService->record($sessionId, $displayName);
-        $session = $this->sessionService->endSession($sessionId);
+        $sessionPayload = $this->sessionService->endSession($sessionId);
 
         return JsonResponse::success([
-            'session' => $session,
+            'session' => $sessionPayload,
             'leaderboardEntry' => $leaderboardEntry,
         ]);
     }

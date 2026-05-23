@@ -2,7 +2,12 @@
 
 declare(strict_types=1);
 
+loadEnv(__DIR__ . '/../.env');
 loadEnv(__DIR__ . '/.env');
+
+if (is_file(__DIR__ . '/vendor/autoload.php')) {
+    require __DIR__ . '/vendor/autoload.php';
+}
 
 spl_autoload_register(static function (string $class): void {
     $prefix = 'Market\\';
@@ -22,11 +27,40 @@ spl_autoload_register(static function (string $class): void {
 
 $config = require __DIR__ . '/config/app.php';
 
+$redisUrl = getenv('REDIS_URL') ?: ($_ENV['REDIS_URL'] ?? '');
+$redisPrefix = getenv('REDIS_PREFIX') ?: ($_ENV['REDIS_PREFIX'] ?? 'market:');
+
+$redisClient = null;
+
+if ($redisUrl !== '') {
+    try {
+        if (!class_exists(\Predis\Client::class)) {
+            throw new RuntimeException('Predis not installed');
+        }
+
+        $redisClient = new Market\Infrastructure\Storage\Redis\RedisClient($redisUrl, $redisPrefix);
+        if (!$redisClient->ping()) {
+            $redisClient = null;
+        }
+    } catch (Throwable) {
+        $redisClient = null;
+    }
+}
+
 $assetRepository = new Market\Infrastructure\Storage\InMemory\AssetRepository($config['seed_assets'] ?? []);
 $priceHistoryRepository = new Market\Infrastructure\Storage\InMemory\PriceHistoryRepository();
 $sessionRepository = new Market\Infrastructure\Storage\InMemory\SessionRepository();
 $portfolioRepository = new Market\Infrastructure\Storage\InMemory\PortfolioRepository();
-$leaderboardRepository = new Market\Infrastructure\Storage\InMemory\LeaderboardRepository();
+
+if ($redisClient !== null) {
+    $leaderboardRepository = new Market\Infrastructure\Storage\Redis\RedisLeaderboardRepository($redisClient);
+    $orderRepository = new Market\Infrastructure\Storage\Redis\RedisOrderRepository($redisClient);
+} else {
+    $leaderboardRepository = new Market\Infrastructure\Storage\InMemory\LeaderboardRepository();
+    $orderRepository = new Market\Infrastructure\Storage\InMemory\InMemoryOrderRepository();
+}
+
+$eventPublisher = new Market\Application\EventPublisher($redisClient);
 
 $priceGeneratorService = new Market\Application\PriceGeneratorService();
 $assetService = new Market\Application\AssetService(
@@ -35,34 +69,44 @@ $assetService = new Market\Application\AssetService(
     $priceGeneratorService,
     (int) $config['price_update_interval_seconds'],
     (int) $config['history_limit'],
-    (bool) ($config['app_debug'] ?? false)
+    (bool) ($config['app_debug'] ?? false),
+    $eventPublisher
 );
 $sessionService = new Market\Application\SessionService(
     $sessionRepository,
     $portfolioRepository,
-    (float) $config['initial_cash']
+    (float) ($config['initial_cash'] ?? 10000.0)
 );
 $portfolioService = new Market\Application\PortfolioService(
     $portfolioRepository,
     $sessionRepository,
     $assetService
 );
-$tradeService = new Market\Application\TradeService(
+$matchingEngine = new Market\Application\MatchingEngine(
+    $orderRepository,
+    $portfolioRepository,
+    $eventPublisher
+);
+$orderService = new Market\Application\OrderService(
     $sessionRepository,
     $portfolioRepository,
     $assetService,
-    $portfolioService
+    $portfolioService,
+    $orderRepository,
+    $matchingEngine
 );
 $leaderboardService = new Market\Application\LeaderboardService(
     $leaderboardRepository,
     $sessionRepository,
-    $portfolioService
+    $portfolioService,
+    $eventPublisher,
+    (int) ($config['leaderboard_limit'] ?? 10)
 );
 
 $controllers = [
     'asset' => new Market\Controller\AssetController($assetService),
     'portfolio' => new Market\Controller\PortfolioController($portfolioService),
-    'trade' => new Market\Controller\TradeController($tradeService),
+    'order' => new Market\Controller\OrderController($orderService),
     'session' => new Market\Controller\SessionController($sessionService, $leaderboardService),
     'leaderboard' => new Market\Controller\LeaderboardController($leaderboardService),
 ];
@@ -82,6 +126,7 @@ foreach ($routes as $route) {
 return [
     'router' => $router,
     'config' => $config,
+    'redis' => $redisClient,
 ];
 
 function loadEnv(string $path): void

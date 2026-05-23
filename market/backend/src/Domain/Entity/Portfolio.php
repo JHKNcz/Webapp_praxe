@@ -26,6 +26,58 @@ final class Portfolio
         $this->cash = round(max(0.0, $cash), 2);
     }
 
+    public function lockCash(float $amount): void
+    {
+        $amount = round($amount, 2);
+
+        if ($amount <= 0) {
+            throw new DomainException('Amount must be greater than zero');
+        }
+
+        if ($amount > $this->cash) {
+            throw new DomainException('Not enough cash');
+        }
+
+        $this->cash = round($this->cash - $amount, 2);
+    }
+
+    public function creditCash(float $amount): void
+    {
+        $this->cash = round($this->cash + max(0.0, $amount), 2);
+    }
+
+    public function lockShares(string $assetId, int $quantity): void
+    {
+        if ($quantity <= 0) {
+            throw new DomainException('Quantity must be greater than zero');
+        }
+
+        if (!isset($this->holdings[$assetId])) {
+            throw new DomainException('Holding not found');
+        }
+
+        $holding = $this->holdings[$assetId];
+        $holding->decrease($quantity);
+
+        if ($holding->isEmpty()) {
+            unset($this->holdings[$assetId]);
+        }
+    }
+
+    public function creditShares(string $assetId, int $quantity, float $price): void
+    {
+        if ($quantity <= 0) {
+            throw new DomainException('Quantity must be greater than zero');
+        }
+
+        if (!isset($this->holdings[$assetId])) {
+            $this->holdings[$assetId] = new Holding($assetId, $quantity, $price);
+            return;
+        }
+
+        $this->holdings[$assetId]->increase($quantity, $price);
+    }
+
     public function getHolding(string $assetId): ?Holding
     {
         return $this->holdings[$assetId] ?? null;
