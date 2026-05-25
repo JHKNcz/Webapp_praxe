@@ -1,26 +1,46 @@
-# Self-contained Market.io stack — no bundled nginx.
-# Bind ports to localhost; point your existing reverse proxy here.
+# Single-file Market.io stack (portable between machines).
+# No hardware-specific mount paths; only repo-relative paths and named volumes.
 name: market-io
 
 services:
+  frontend:
+    image: nginx:alpine
+    restart: unless-stopped
+    # Static frontend files + internal reverse proxy (/api, /ws).
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+      - ./frontend/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      # Host override via FRONTEND_PORT, default 9082.
+      - "127.0.0.1:${FRONTEND_PORT:-9082}:80"
+    depends_on:
+      # Startup order only (does not wait for readiness/health).
+      - api
+      - ws-gateway
+
   api:
     build:
       context: ./backend
       dockerfile: Dockerfile
     restart: unless-stopped
     volumes:
+      # Live code mount for local iteration.
       - ./backend:/app
+      # Keep Composer vendor dependencies in a dedicated named volume.
       - api_vendor:/app/vendor
     working_dir: /app
     command: php -S 0.0.0.0:8000 -t public
     environment:
+      # APP_DEBUG=true enables verbose API logging.
       APP_DEBUG: ${APP_DEBUG:-false}
+      # Internal Redis URL inside the compose network.
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      # Key prefix so Redis keys are isolated from other apps.
       REDIS_PREFIX: ${REDIS_PREFIX:-market:}
+      # Starting session cash for each player.
       INITIAL_CASH: ${INITIAL_CASH:-10000}
-    ports:
-      - "127.0.0.1:${API_PORT:-9080}:8000"
     depends_on:
+      # Startup order only (does not wait for readiness/health).
       - redis
 
   redis:
@@ -36,13 +56,16 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     environment:
+      # Same internal Redis URL as API.
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      # Container port used by the websocket server process.
       WS_PORT: "3001"
-    ports:
-      - "127.0.0.1:${WS_HOST_PORT:-9081}:3001"
     depends_on:
+      # Startup order only (does not wait for readiness/health).
       - redis
 
 volumes:
+  # Redis persistence.
   redis-data:
+  # PHP Composer dependencies cache.
   api_vendor:
