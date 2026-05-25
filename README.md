@@ -7,7 +7,7 @@ Multiplayer .io-style market simulation for short sessions. Each player joins wi
 - Session-only play (no permanent accounts); state in Redis for the open window
 - Solo-friendly **market** orders (instant fill vs simulated exchange) plus optional **P2P** order book
 - Simple browser UI with live prices, portfolio PnL, order book, and transaction history
-- Self-hosted stack (Docker Compose) that can sit behind your existing nginx
+- Self-hosted stack with a single Docker ingress (`frontend`) and internal-only API/WS services
 
 The runnable app lives in the [`market/`](market/) directory.
 
@@ -27,13 +27,14 @@ Backend details: [`market/backend/ARCHITECTURE.md`](market/backend/ARCHITECTURE.
 
 ## Stack
 
-| Service | Role | Default host port |
-|---------|------|-------------------|
-| `api` | PHP REST API | `127.0.0.1:9080` |
-| `ws-gateway` | WebSocket fan-out (Redis pub/sub) | `127.0.0.1:9081` |
-| `redis` | Orders, portfolios, leaderboard, pub/sub | internal only |
+| Service | Role | Host exposure (default) |
+|---------|------|-------------------------|
+| `frontend` | Static UI + reverse proxy for `/api` and `/ws` | `127.0.0.1:9082` |
+| `api` | PHP REST API | internal Docker network only |
+| `ws-gateway` | WebSocket fan-out (Redis pub/sub) | internal Docker network only |
+| `redis` | Orders, portfolios, leaderboard, pub/sub | internal Docker network only |
 
-Static frontend: [`market/frontend/`](market/frontend/) — in production, serve as site root and proxy `/api` and `/ws`.
+Frontend nginx config lives in [`market/frontend/nginx.conf`](market/frontend/nginx.conf).
 
 ## Quick start
 
@@ -41,10 +42,17 @@ Static frontend: [`market/frontend/`](market/frontend/) — in production, serve
 cd market
 cp .env.example .env
 docker compose up -d --build
+```
+
+Open **http://127.0.0.1:9082**.
+
+If you prefer the Node dev proxy for local iteration:
+
+```bash
 npm run dev
 ```
 
-Open **http://localhost:3000** (dev proxy). API alone: **http://127.0.0.1:9080**.
+Then use **http://localhost:3000**.
 
 ## Test on your PC (before server deploy)
 
@@ -65,8 +73,8 @@ npm run dev
 ### Verify backend
 
 ```powershell
-curl http://127.0.0.1:9080/assets
-curl http://127.0.0.1:9081/health
+curl http://127.0.0.1:9082/api/assets
+curl http://127.0.0.1:9082/api/leaderboard
 docker compose exec -T api php tests/run.php
 docker compose exec -T api php tests/smoke.php
 docker compose exec -T api php tests/price_persistence.php
@@ -94,13 +102,29 @@ Run `ws-gateway` only when Redis is available.
 
 ---
 
-## External nginx (production)
+## Production ingress options
 
-1. Mount or copy `market/frontend/` as the site root.
-2. Proxy `/api/` → `http://127.0.0.1:9080` (strip `/api` prefix in the PHP app).
-3. Proxy `/ws` → `http://127.0.0.1:9081` with WebSocket upgrade headers.
+### Option A: Existing nginx/NPM in front of Docker
 
-Template: [`market/deploy/external-nginx.example.conf`](market/deploy/external-nginx.example.conf).
+Proxy all traffic to `frontend` only (`http://127.0.0.1:9082`).  
+Do not proxy `/api` and `/ws` separately: frontend nginx already routes those paths internally.
+
+### Option B: Isolated Docker network + `cloudflared` tunnel (recommended)
+
+Use a private app network for `frontend`, `api`, `ws-gateway`, `redis`, and attach only `cloudflared` as edge ingress.
+
+- No host ports are required for API, WS, or Redis.
+- Tunnel ingress targets `http://frontend:80`.
+- DNS points to Cloudflare tunnel hostname; host nginx stays untouched for other confidential apps.
+
+Minimal `cloudflared` ingress shape:
+
+```yaml
+ingress:
+  - hostname: marketio.example.com
+    service: http://frontend:80
+  - service: http_status:404
+```
 
 ## Environment
 
@@ -109,11 +133,12 @@ Copy [`market/.env.example`](market/.env.example) to `market/.env`. Compose pass
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `APP_DEBUG` | Verbose price logs in API | `false` |
-| `API_PORT` | Host port for PHP API | `9080` |
-| `WS_HOST_PORT` | Host port for WebSocket gateway | `9081` |
+| `FRONTEND_PORT` | Host port for the single exposed frontend ingress | `9082` |
 | `REDIS_URL` | Redis connection | `redis://redis:6379` |
 | `REDIS_PREFIX` | Key prefix (isolate from other apps) | `market:` |
 | `INITIAL_CASH` | Starting cash per session (read by `config/app.php`) | `10000` |
+
+Legacy variables `API_PORT` and `WS_HOST_PORT` can remain in `.env`, but the current compose file does not publish those services to the host.
 
 After changing `INITIAL_CASH`, recreate containers: `docker compose up -d --build`.
 
