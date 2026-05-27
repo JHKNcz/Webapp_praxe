@@ -80,5 +80,9 @@ export const COPY = {
   sessionResumeFailed: 'Could not restore your session. Please enter again.',
 
   // Time update label
-  updatedAt: (t) => `Updated ${t}`,
+  updatedAt: (t) => `Last tick ${t}`,
+  marketWireTitle: 'Market Wire',
+  newsEmpty: 'No headlines yet — watch for breaking news.',
+  chartTimeStart: 'Start',
+  chartTimeEnd: 'Now',
 };

@@ -30,7 +30,7 @@ return [
         ],
         [
             'id' => 'asset-2',
-            'name' => 'GameStopp Corp',
+            'name' => 'GameStart Corp',
             'lastPrice' => 25.0,
             'fairPrice' => 25.0,
             'risk' => 0.30,

@@ -7,7 +7,7 @@ import {
   updateHeroRank,
   renderAssets,
   renderLivePrice,
-  renderNewsTicker,
+  renderNewsFeed,
   renderPriceChart,
   renderPortfolio,
   renderOrderBook,
@@ -15,6 +15,7 @@ import {
   renderLeaderboard,
   renderTransactions,
 } from './ui-render.js';
+import { formatClockNow } from './ui-state.js';
 
 const state = {
   sessionId:       localStorage.getItem('market.sessionId') || '',
@@ -24,12 +25,21 @@ const state = {
   assetPhases:     {},
   lastPrices:      {},
   lastPriceTickAt: 0,
+  chartHistory:    {},
+  chartNewsMarkers: {},
+  newsItems:       [],
+  newsMinuteBucket: 0,
+  newsThisMinute:  0,
+  newsAllowedThisMinute: 5,
 };
 
-const MAX_NEWS = 8;
-const newsQueue = [];
+const CHART_LIMIT = 200;
+const MAX_NEWS_DISPLAY = 15;
 const TOAST_VARIANTS = ['toast--p2p'];
 let toastTimer = null;
+let newsAlertTimer = null;
+let clockTimer = null;
+let chartLoadToken = 0;
 
 const els = {
   lobby:          document.getElementById('lobby'),
@@ -44,7 +54,10 @@ const els = {
   heroPnlPct:     document.getElementById('hero-pnl-pct'),
   heroRank:       document.getElementById('hero-rank'),
   topbarPrice:    document.getElementById('topbar-price'),
-  newsTicker:     document.getElementById('news-ticker'),
+  marketClock:    document.getElementById('market-clock'),
+  newsFeed:       document.getElementById('news-feed'),
+  newsEmpty:      document.getElementById('news-empty'),
+  newsAlert:      document.getElementById('news-alert'),
   endBtn:         document.getElementById('end-btn'),
   assetList:      document.getElementById('asset-list'),
   portfolio:      document.getElementById('portfolio'),
@@ -68,16 +81,113 @@ const els = {
   toast:          document.getElementById('toast'),
 };
 
-function pushHeadline(headline) {
-  if (typeof headline !== 'string') return;
-  const normalized = headline.trim();
-  if (!normalized) return;
-  if (newsQueue[newsQueue.length - 1] === normalized) return;
-  newsQueue.push(normalized);
-  if (newsQueue.length > MAX_NEWS) {
-    newsQueue.splice(0, newsQueue.length - MAX_NEWS);
+function syncNewsMinuteBucket() {
+  const minute = Math.floor(Date.now() / 60000);
+  if (minute === state.newsMinuteBucket) return;
+  state.newsMinuteBucket = minute;
+  state.newsThisMinute = 0;
+  state.newsAllowedThisMinute = 1 + Math.floor(Math.random() * 5);
+}
+
+function canAcceptNewsClient() {
+  syncNewsMinuteBucket();
+  return state.newsThisMinute < state.newsAllowedThisMinute;
+}
+
+function pushNews(event) {
+  if (!event?.headline) return;
+  if (!canAcceptNewsClient()) return;
+
+  state.newsThisMinute += 1;
+
+  const item = {
+    ts: event.ts || Math.floor(Date.now() / 1000),
+    headline: String(event.headline).trim(),
+    assetId: event.assetId || '',
+    assetName: event.assetName || '',
+    phase: event.phase || 'normal',
+  };
+
+  if (!item.headline) return;
+  if (state.newsItems[0]?.headline === item.headline && state.newsItems[0]?.ts === item.ts) {
+    return;
   }
-  renderNewsTicker(els.newsTicker, newsQueue);
+
+  state.newsItems.unshift(item);
+  if (state.newsItems.length > MAX_NEWS_DISPLAY) {
+    state.newsItems.length = MAX_NEWS_DISPLAY;
+  }
+
+  if (!state.chartNewsMarkers[item.assetId]) {
+    state.chartNewsMarkers[item.assetId] = [];
+  }
+  state.chartNewsMarkers[item.assetId].push({ ts: item.ts, phase: item.phase });
+  const markers = state.chartNewsMarkers[item.assetId];
+  if (markers.length > 24) {
+    state.chartNewsMarkers[item.assetId] = markers.slice(-24);
+  }
+
+  renderNewsFeed(els.newsFeed, els.newsEmpty, state.newsItems);
+  showNewsAlert(item);
+
+  if (item.assetId === state.selectedAssetId) {
+    els.livePrice.classList.remove('flash-news');
+    void els.livePrice.offsetWidth;
+    els.livePrice.classList.add('flash-news');
+    renderSelectedChart();
+  }
+}
+
+function showNewsAlert(item) {
+  if (!els.newsAlert) return;
+  if (newsAlertTimer) {
+    clearTimeout(newsAlertTimer);
+    newsAlertTimer = null;
+  }
+  els.newsAlert.className = `news-alert news-alert--${item.phase || 'normal'}`;
+  els.newsAlert.innerHTML = `<span class="news-alert-time">${formatClockNow()}</span> ${item.headline}`;
+  els.newsAlert.classList.remove('hidden');
+  newsAlertTimer = setTimeout(() => {
+    els.newsAlert.classList.add('hidden');
+  }, 3200);
+}
+
+function startMarketClock() {
+  const tick = () => {
+    if (!els.marketClock) return;
+    const now = new Date();
+    els.marketClock.textContent = formatClockNow(now);
+    els.marketClock.dateTime = now.toISOString();
+  };
+  tick();
+  if (clockTimer) clearInterval(clockTimer);
+  clockTimer = setInterval(tick, 1000);
+}
+
+function mergeChartPoint(assetId, price, ts) {
+  if (!state.chartHistory[assetId]) {
+    state.chartHistory[assetId] = [];
+  }
+  const hist = state.chartHistory[assetId];
+  const last = hist[hist.length - 1];
+  if (last && last.ts === ts) {
+    last.price = price;
+    return;
+  }
+  hist.push({ price, ts });
+  if (hist.length > CHART_LIMIT) {
+    hist.shift();
+  }
+}
+
+function renderSelectedChart() {
+  const id = state.selectedAssetId;
+  renderPriceChart(
+    els.priceChart,
+    state.chartHistory[id] || [],
+    state.assetPhases[id] || 'normal',
+    state.chartNewsMarkers[id] || []
+  );
 }
 
 function showToast(message, extraClass = '') {
@@ -161,17 +271,22 @@ function syncDefaultLimitPrice() {
   els.limitPrice.value = Number(asset.lastPrice).toFixed(2);
 }
 
-function applyAssetPrices(items) {
+function applyAssetPrices(items, tickTs) {
   const prev = { ...state.lastPrices };
+  const ts = tickTs || Math.floor(Date.now() / 1000);
   state.assets = items || [];
   state.assetPhases = {};
   state.assets.forEach((a) => { prev[a.id] = state.lastPrices[a.id]; });
-  state.assets.forEach((a) => { state.assetPhases[a.id] = a.phase || 'normal'; });
-  state.lastPriceTickAt = Math.floor(Date.now() / 1000);
-  renderAssets(els, state.assets, state.selectedAssetId, state.lastPrices);
+  state.assets.forEach((a) => {
+    state.assetPhases[a.id] = a.phase || 'normal';
+    mergeChartPoint(a.id, Number(a.lastPrice), ts);
+  });
+  state.lastPriceTickAt = ts;
+  renderAssets(els, state.assets, state.selectedAssetId, state.lastPrices, state.assetPhases);
   state.assets.forEach((a) => { state.lastPrices[a.id] = Number(a.lastPrice); });
   renderLivePrice(els, getSelectedAsset(), prev, state.lastPriceTickAt);
   syncDefaultLimitPrice();
+  renderSelectedChart();
 }
 
 async function refreshPortfolioOnly() {
@@ -183,15 +298,19 @@ async function refreshPortfolioOnly() {
 
 async function loadPriceChart() {
   if (!state.selectedAssetId) return;
+  const assetId = state.selectedAssetId;
+  const token = ++chartLoadToken;
   try {
-    const payload = await api.getAssetDetail(state.selectedAssetId);
-    renderPriceChart(
-      els.priceChart,
-      payload.history || [],
-      state.assetPhases[state.selectedAssetId] || 'normal'
-    );
+    const payload = await api.getAssetDetail(assetId, CHART_LIMIT);
+    if (token !== chartLoadToken || assetId !== state.selectedAssetId) return;
+    state.chartHistory[assetId] = (payload.history || []).map((p) => ({
+      price: Number(p.price),
+      ts: Number(p.ts || 0),
+    }));
+    renderSelectedChart();
   } catch {
-    renderPriceChart(els.priceChart, [], state.assetPhases[state.selectedAssetId] || 'normal');
+    if (token !== chartLoadToken) return;
+    renderSelectedChart();
   }
 }
 
@@ -216,7 +335,7 @@ async function refreshAll() {
   state.assets.forEach((a) => { state.assetPhases[a.id] = a.phase || 'normal'; });
   state.assets.forEach((a) => { state.lastPrices[a.id] = Number(a.lastPrice); });
 
-  renderAssets(els, state.assets, state.selectedAssetId, state.lastPrices);
+  renderAssets(els, state.assets, state.selectedAssetId, state.lastPrices, state.assetPhases);
   renderLivePrice(els, getSelectedAsset(), state.lastPrices, state.lastPriceTickAt);
   syncDefaultLimitPrice();
   renderPortfolio(els, portfolioPayload, state.assets);
@@ -274,6 +393,7 @@ async function enterGame() {
     localStorage.setItem('market.nickname',  state.nickname);
     els.lobby.classList.add('hidden');
     els.game.classList.remove('hidden');
+    startMarketClock();
     await refreshAll();
     showToast(COPY.toastWelcome);
   } catch (error) {
@@ -405,7 +525,8 @@ els.assetList.addEventListener('click', async (e) => {
   if (!item) return;
   state.selectedAssetId = item.dataset.id;
   els.limitPrice._userEdited = false;
-  renderAssets(els, state.assets, state.selectedAssetId, state.lastPrices);
+  renderAssets(els, state.assets, state.selectedAssetId, state.lastPrices, state.assetPhases);
+  renderSelectedChart();
   syncDefaultLimitPrice();
   const [book] = await Promise.all([
     api.getOrderBook(state.selectedAssetId),
@@ -429,13 +550,12 @@ els.openOrders.addEventListener('click', (e) => {
 createMarketSocket({
   onMessage(payload) {
     if (payload.type === 'price_tick') {
-      applyAssetPrices(payload.items || []);
+      applyAssetPrices(payload.items || [], payload.ts);
       if (payload.event?.headline) {
-        pushHeadline(payload.event.headline);
+        pushNews(payload.event);
       }
       if (state.sessionId) {
         refreshPortfolioOnly().catch(() => {});
-        loadPriceChart().catch(() => {});
       }
     }
 
@@ -466,6 +586,8 @@ createMarketSocket({
     }
   },
 });
+
+startMarketClock();
 
 if (state.sessionId) {
   els.nickname.value = state.nickname;

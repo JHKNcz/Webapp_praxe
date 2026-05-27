@@ -33,7 +33,7 @@ Notes for the redesigned branch:
 - Starting cash default is `1000` (`INITIAL_CASH` env).
 - Seed assets are:
   - `MoonRocket AI Ltd`
-  - `GameStopp Corp`
+  - `GameStart Corp`
   - `Lehmann & Bros Inc`
 - Price update interval is 1s in backend config, while ws-gateway triggers market ticks at 500ms cadence.
 - If you do not remove volumes, Redis may keep old seeded market data from previous runs.

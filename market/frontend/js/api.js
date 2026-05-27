@@ -45,7 +45,7 @@ export const api = {
     return request('/assets/tick');
   },
 
-  async getAssetDetail(assetId, limit = 40) {
+  async getAssetDetail(assetId, limit = 200) {
     return request(`/assets/${encodeURIComponent(assetId)}?limit=${limit}`);
   },
 

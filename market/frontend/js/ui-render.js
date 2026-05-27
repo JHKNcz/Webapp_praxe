@@ -6,6 +6,8 @@ import {
   formatPercent,
   pnlClass,
   formatTime,
+  formatTimeShort,
+  phaseLabel,
   leaderboardReturn,
   rankBadge,
 } from './ui-state.js';
@@ -31,7 +33,7 @@ export function updateHeroRank(els, items, sessionId) {
 
 // ── Assets list ──────────────────────────────────────────────────────────────
 
-export function renderAssets(els, assets, selectedAssetId, lastPrices) {
+export function renderAssets(els, assets, selectedAssetId, lastPrices, assetPhases = {}) {
   els.assetList.innerHTML = assets
     .map((asset) => {
       const selected = asset.id === selectedAssetId ? 'selected' : '';
@@ -80,55 +82,113 @@ export function renderLivePrice(els, asset, lastPrices, lastPriceTickAt) {
   els.selectedAsset.textContent = `${asset.name} @ ${formatValue(price)}`;
 }
 
-export function renderNewsTicker(el, headlines) {
-  if (!el) return;
-  const queue = (headlines || []).filter((item) => typeof item === 'string' && item.trim().length > 0);
-  if (queue.length === 0) {
-    el.classList.remove('is-active');
-    el.innerHTML = '';
-    return;
-  }
-
-  const text = queue.join(' \u2022 ');
-  const escaped = text
+function escapeHtml(text) {
+  return String(text)
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;');
-  el.classList.add('is-active');
-  el.innerHTML = `<p class="news-ticker-track">${escaped}</p>`;
+}
+
+export function renderNewsFeed(feedEl, emptyEl, items) {
+  if (!feedEl) return;
+  const list = items || [];
+  if (emptyEl) {
+    emptyEl.classList.toggle('hidden', list.length > 0);
+  }
+  if (list.length === 0) {
+    feedEl.innerHTML = '';
+    return;
+  }
+  feedEl.innerHTML = list
+    .map((item, index) => {
+      const phase = item.phase || 'normal';
+      const fresh = index === 0 ? ' news-item--fresh' : '';
+      return `<li class="news-item news-item--${phase}${fresh}" data-asset-id="${escapeHtml(item.assetId || '')}">
+        <span class="news-time">${formatTime(item.ts)}</span>
+        <span class="news-phase">${phaseLabel(phase)}</span>
+        <span class="news-headline">${escapeHtml(item.headline)}</span>
+      </li>`;
+    })
+    .join('');
 }
 
 // ── Price chart ──────────────────────────────────────────────────────────────
 
-export function renderPriceChart(priceChart, history, currentPhase = 'normal') {
+export function renderPriceChart(priceChart, history, currentPhase = 'normal', newsMarkers = []) {
   if (!priceChart) return;
-  const points = (history || []).filter((p) => typeof p.price === 'number');
+  const rawPoints = (history || [])
+    .map((p) => ({ price: Number(p.price), ts: Number(p.ts || p.timestamp || 0) }))
+    .filter((p) => Number.isFinite(p.price) && p.ts > 0);
+  if (rawPoints.length < 2) {
+    priceChart.innerHTML = '';
+    return;
+  }
+
+  const sorted = rawPoints.sort((a, b) => a.ts - b.ts);
+  const deduped = [];
+  for (const point of sorted) {
+    const last = deduped[deduped.length - 1];
+    if (last && last.ts === point.ts) {
+      last.price = point.price;
+    } else {
+      deduped.push({ ...point });
+    }
+  }
+  const points = deduped.length > 120 ? deduped.slice(-120) : deduped;
   if (points.length < 2) {
     priceChart.innerHTML = '';
     return;
   }
-  const width = 320;
-  const height = 200;
-  const pad = 10;
-  const prices = points.map((p) => Number(p.price));
+
+  const width = 640;
+  const height = 220;
+  const padL = 42;
+  const padR = 12;
+  const padT = 22;
+  const padB = 28;
+  const chartW = width - padL - padR;
+  const chartH = height - padT - padB;
+
+  const prices = points.map((p) => p.price);
   const min = Math.min(...prices);
   const max = Math.max(...prices);
   const range = max - min || 1;
-  const coords = points.map((p, i) => {
-    const x = pad + (i / (points.length - 1)) * (width - pad * 2);
-    const y = height - pad - ((Number(p.price) - min) / range) * (height - pad * 2);
-    return `${x.toFixed(1)},${y.toFixed(1)}`;
-  });
+  const yPad = range * 0.08;
+  const yMin = min - yPad;
+  const yMax = max + yPad;
+  const yRange = yMax - yMin || 1;
+  const tMin = points[0].ts;
+  const tMax = points[points.length - 1].ts;
+  const tRange = tMax - tMin || 1;
+
+  const toX = (ts) => padL + ((ts - tMin) / tRange) * chartW;
+  const toY = (price) => padT + chartH - ((price - yMin) / yRange) * chartH;
+
+  const coords = points.map((p) => `${toX(p.ts).toFixed(1)},${toY(p.price).toFixed(1)}`);
   const line = coords.join(' ');
-  const area = `${pad},${height - pad} ${line} ${width - pad},${height - pad}`;
-  const latestPrice = Number(points[points.length - 1].price);
-  const phaseLabel = String(currentPhase || 'normal').toUpperCase();
+  const area = `${padL},${padT + chartH} ${line} ${padL + chartW},${padT + chartH}`;
+
+  const markerLines = (newsMarkers || [])
+    .filter((m) => m.ts >= tMin && m.ts <= tMax + 2)
+    .map((m) => {
+      const x = toX(m.ts).toFixed(1);
+      const phase = m.phase || 'normal';
+      return `<line class="chart-event-line chart-event-line--${phase}" x1="${x}" y1="${padT}" x2="${x}" y2="${padT + chartH}" />`;
+    })
+    .join('');
+
+  const latestPrice = prices[prices.length - 1];
+  const phaseText = phaseLabel(currentPhase || 'normal');
+
   priceChart.setAttribute('viewBox', `0 0 ${width} ${height}`);
   priceChart.innerHTML = `
+    ${markerLines}
     <polygon class="price-chart-area" points="${area}" />
     <polyline class="price-chart-line" points="${line}" />
-    <text class="chart-price-label" x="${width - pad}" y="${pad + 14}" text-anchor="end">${formatValue(latestPrice)}</text>
-    <text class="chart-phase-label" x="${pad}" y="${pad + 14}" text-anchor="start">${phaseLabel}</text>
+    <text class="chart-time-label" x="${padL}" y="${height - 6}" text-anchor="start">${formatTimeShort(tMin)}</text>
+    <text class="chart-time-label" x="${padL + chartW}" y="${height - 6}" text-anchor="end">${formatTimeShort(tMax)}</text>
+    <text class="chart-price-label" x="${width - padR}" y="${padT + 12}" text-anchor="end">${formatValue(latestPrice)}</text>
+    <text class="chart-phase-label" x="${padL}" y="${padT + 12}" text-anchor="start">${phaseText}</text>
   `;
 }
 

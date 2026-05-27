@@ -21,13 +21,49 @@ export function pnlClass(value) {
   return Number(value) >= 0 ? 'price-up' : 'price-down';
 }
 
+/** Market display timezone (GMT+2 / Europe–Berlin). */
+export const MARKET_TIMEZONE = 'Europe/Berlin';
+
+const marketTimeOpts = {
+  timeZone: MARKET_TIMEZONE,
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  hour12: false,
+};
+
+const marketTimeShortOpts = {
+  timeZone: MARKET_TIMEZONE,
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+};
+
 export function formatTime(ts) {
   if (!ts) return '';
-  return new Date(ts * 1000).toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
+  return new Date(ts * 1000).toLocaleTimeString('en-GB', marketTimeOpts);
+}
+
+export function formatTimeShort(ts) {
+  if (!ts) return '';
+  return new Date(ts * 1000).toLocaleTimeString('en-GB', marketTimeShortOpts);
+}
+
+export function formatClockNow(date = new Date()) {
+  return date.toLocaleTimeString('en-GB', {
+    ...marketTimeOpts,
+    timeZoneName: 'short',
   });
+}
+
+export function phaseLabel(phase) {
+  const labels = {
+    bull_run: 'BULL',
+    bear_crash: 'BEAR',
+    pump_dump: 'PUMP',
+    normal: '',
+  };
+  return labels[phase] || String(phase || '').toUpperCase();
 }
 
 // Starting capital from backend config (app.php initial_cash default)
