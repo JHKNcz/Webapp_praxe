@@ -15,13 +15,19 @@ final class EventPublisher
     {
     }
 
-    public function publishPriceTick(array $assets): void
+    public function publishPriceTick(array $assets, ?array $event = null): void
     {
-        $this->publish(self::CHANNEL_PRICES, [
+        $payload = [
             'type' => 'price_tick',
             'items' => $assets,
             'ts' => time(),
-        ]);
+        ];
+
+        if ($event !== null) {
+            $payload['event'] = $event;
+        }
+
+        $this->publish(self::CHANNEL_PRICES, $payload);
     }
 
     public function publishTrade(array $trade): void
