@@ -1,6 +1,6 @@
 # Market.io deployment on Google Cloud (Cloud Run + Cloud Build)
 
-This guide deploys the `market/` app similarly to `Denly11/StudentProject`:
+This guide deploys the `market/` app as three independent Cloud Run services:
 
 - `api` (`market/backend`) as Cloud Run service
 - `frontend` (`market/frontend` with Nginx) as Cloud Run service
@@ -60,7 +60,6 @@ Create Redis instance (example):
 ```bash
 gcloud redis instances create market-redis \
   --region=europe-west1 \
-  --redis-version=redis_7_0 \
   --size=1 \
   --network=default
 ```

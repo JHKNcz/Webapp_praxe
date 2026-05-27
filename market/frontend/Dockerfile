@@ -7,7 +7,8 @@ COPY js /usr/share/nginx/html/js
 COPY nginx.cloudrun.conf.template /etc/nginx/templates/default.conf.template
 
 ENV PORT=8080
-ENV BACKEND_URL=http://localhost:8000
-ENV WS_GATEWAY_URL=http://localhost:3001
+# Placeholder defaults for local image sanity; Cloud Build trigger should always override.
+ENV BACKEND_URL=https://REPLACE_WITH_BACKEND_URL
+ENV WS_GATEWAY_URL=https://REPLACE_WITH_WS_GATEWAY_URL
 
 EXPOSE 8080
