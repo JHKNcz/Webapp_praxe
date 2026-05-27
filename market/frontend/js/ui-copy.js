@@ -1,16 +1,16 @@
 // market/frontend/js/ui-copy.js
 export const COPY = {
   // Lobby
-  lobbyTagline: 'Simulated stock exchange — maximize your portfolio value.',
-  nicknameLabel: 'Nickname',
+  lobbyTagline: 'Trade simulated markets and grow your portfolio.',
+  nicknameLabel: 'Display Name',
   nicknamePlaceholder: 'Trader42',
-  enterBtn: 'Enter the Market',
+  enterBtn: 'Start Trading',
 
   // Top bar
   endSessionBtn: 'End Session',
 
   // Panels
-  instrumentsTitle: 'Instruments',
+  instrumentsTitle: 'Assets',
   portfolioTitle: 'Portfolio',
   orderbookTitle: 'Order Book (Players)',
   tradingTitle: 'Trading',
@@ -25,15 +25,15 @@ export const COPY = {
   heroReturnLabel: 'Return',
 
   // Portfolio
-  portfolioNoPositions: 'No open positions',
+  portfolioNoPositions: 'No open positions yet.',
 
   // Orderbook
-  orderbookHint: 'Tap Buy/Sell on a row to trade with that player (uses quantity below).',
-  orderbookAsksLabel: 'Asks (Sell orders)',
-  orderbookBidsLabel: 'Bids (Buy orders)',
-  orderbookNoAsks: 'No sell orders',
-  orderbookNoBids: 'No buy orders',
-  orderbookEmptyHint: 'Empty book — trade via Market or place a Post order.',
+  orderbookHint: 'Use Buy or Sell on any row to trade with that player at your selected quantity.',
+  orderbookAsksLabel: 'Asks (Sell Orders)',
+  orderbookBidsLabel: 'Bids (Buy Orders)',
+  orderbookNoAsks: 'No sell orders available.',
+  orderbookNoBids: 'No buy orders available.',
+  orderbookEmptyHint: 'The order book is empty. Use a market order or place a limit order.',
 
   // Live price
   livePriceLabel: 'Live Price',
@@ -42,18 +42,19 @@ export const COPY = {
   // Trading
   selectedLabel: 'Selected',
   quantityLabel: 'Quantity',
-  tradeHint: 'Market = instant fill against the exchange. Post = adds your order to the book at current market price.',
+  quantityError: 'Enter a quantity greater than 0.',
+  tradeHint: 'Market orders execute immediately at the best available price. Limit orders are posted to the book at your chosen price.',
   marketBuyBtn: 'Market Buy',
   marketSellBtn: 'Market Sell',
-  postBuyBtn: 'Post Buy',
-  postSellBtn: 'Post Sell',
+  postBuyBtn: 'Limit Buy',
+  postSellBtn: 'Limit Sell',
   actionBuy: 'Buy',
   actionSell: 'Sell',
   actionCancelOrder: 'Cancel',
-  noOpenOrders: 'No open orders',
+  noOpenOrders: 'No open orders.',
 
   // Leaderboard
-  noScores: 'No scores yet',
+  noScores: 'No scores yet.',
 
   // Transaction table
   txTime: 'Time',
@@ -65,18 +66,18 @@ export const COPY = {
   txVia: 'Via',
   txBuy: 'BUY',
   txSell: 'SELL',
-  txMarket: 'exchange',
-  noTrades: 'No trades yet',
+  txMarket: 'Exchange',
+  noTrades: 'No trades yet.',
 
   // Toasts / dynamic messages (factories)
-  toastWelcome: 'Welcome to the Market!',
+  toastWelcome: 'Welcome to Market.io. Good luck!',
   toastSessionEnded: (score) => `Session ended. Final score: ${score}`,
-  toastFilledMarket: 'Filled at market price',
-  toastOrderMatched: (n) => `Order matched in book (${n} trades)`,
-  toastOrderPosted: 'Order placed in book (market price)',
-  toastP2P: 'P2P trade executed',
-  sessionExpired: 'Session expired (server restart). Please re-enter the market.',
-  sessionResumeFailed: 'Could not resume session. Please re-enter.',
+  toastFilledMarket: 'Market order filled.',
+  toastOrderMatched: (n) => `Limit order matched (${n} fill${n === 1 ? '' : 's'}).`,
+  toastOrderPosted: 'Limit order posted to the book.',
+  toastP2P: 'Player-to-player trade completed.',
+  sessionExpired: 'Your session expired after a server restart. Please enter the market again.',
+  sessionResumeFailed: 'Could not restore your session. Please enter again.',
 
   // Time update label
   updatedAt: (t) => `Updated ${t}`,
