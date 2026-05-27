@@ -100,9 +100,10 @@ if ($redisUrl !== '') {
 
         $redisClient = new Market\Infrastructure\Storage\Redis\RedisClient($redisUrl, $redisPrefix);
         if (!$redisClient->ping()) {
-            $redisClient = null;
+            throw new RuntimeException('Nelze se spojit s Redisem');
         }
-    } catch (Throwable) {
+    } catch (Throwable $e) {
+        error_log("REDIS CHYBA: " . $e->getMessage());
         $redisClient = null;
     }
 }
