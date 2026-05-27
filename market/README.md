@@ -60,6 +60,7 @@ Create Redis instance (example):
 ```bash
 gcloud redis instances create market-redis \
   --region=europe-west1 \
+  --redis-version=redis_7_0 \
   --size=1 \
   --network=default
 ```
