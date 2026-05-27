@@ -283,6 +283,7 @@ async function enterGame() {
 
 async function endSession() {
   if (!state.sessionId) return;
+  if (!confirm('End your session and submit your final score?')) return;
   try {
     const payload = await api.endSession(state.sessionId);
     const score   = Number(payload.leaderboardEntry.score).toFixed(2);
@@ -305,7 +306,11 @@ function setButtonsDisabled(disabled) {
 
 async function placeTrade(side, mode = 'market') {
   const quantity = Number(els.quantity.value);
-  if (!state.sessionId || quantity <= 0) return;
+  if (!state.sessionId) return;
+  if (quantity <= 0) {
+    els.tradeMsg.textContent = COPY.quantityError;
+    return;
+  }
   els.tradeMsg.textContent = '';
   setButtonsDisabled(true);
   try {
