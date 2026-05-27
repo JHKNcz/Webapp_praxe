@@ -47,3 +47,6 @@ substitutions:
 
 images:
   - ${_ARTIFACT_REGISTRY_URL}/${_IMAGE_NAME}:${SHORT_SHA}
+
+options:
+  logging: CLOUD_LOGGING_ONLY
