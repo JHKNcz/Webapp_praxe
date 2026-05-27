@@ -559,6 +559,22 @@ input:focus {
 
 .price-chart-area { fill: rgba(201, 162, 39, 0.08); }
 
+.chart-price-label {
+  fill: var(--gold-bright);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.03em;
+}
+
+.chart-phase-label {
+  fill: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 /* ── Trade Actions ─────────────────────────────────────────── */
 .actions {
   display: flex;

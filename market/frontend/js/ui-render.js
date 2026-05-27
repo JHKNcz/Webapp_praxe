@@ -100,7 +100,7 @@ export function renderNewsTicker(el, headlines) {
 
 // ── Price chart ──────────────────────────────────────────────────────────────
 
-export function renderPriceChart(priceChart, history) {
+export function renderPriceChart(priceChart, history, currentPhase = 'normal') {
   if (!priceChart) return;
   const points = (history || []).filter((p) => typeof p.price === 'number');
   if (points.length < 2) {
@@ -121,10 +121,14 @@ export function renderPriceChart(priceChart, history) {
   });
   const line = coords.join(' ');
   const area = `${pad},${height - pad} ${line} ${width - pad},${height - pad}`;
+  const latestPrice = Number(points[points.length - 1].price);
+  const phaseLabel = String(currentPhase || 'normal').toUpperCase();
   priceChart.setAttribute('viewBox', `0 0 ${width} ${height}`);
   priceChart.innerHTML = `
     <polygon class="price-chart-area" points="${area}" />
     <polyline class="price-chart-line" points="${line}" />
+    <text class="chart-price-label" x="${width - pad}" y="${pad + 14}" text-anchor="end">${formatValue(latestPrice)}</text>
+    <text class="chart-phase-label" x="${pad}" y="${pad + 14}" text-anchor="start">${phaseLabel}</text>
   `;
 }
 

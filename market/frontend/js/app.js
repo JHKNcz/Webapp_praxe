@@ -21,6 +21,7 @@ const state = {
   nickname:        localStorage.getItem('market.nickname')  || '',
   selectedAssetId: 'asset-1',
   assets:          [],
+  assetPhases:     {},
   lastPrices:      {},
   lastPriceTickAt: 0,
 };
@@ -163,7 +164,9 @@ function syncDefaultLimitPrice() {
 function applyAssetPrices(items) {
   const prev = { ...state.lastPrices };
   state.assets = items || [];
+  state.assetPhases = {};
   state.assets.forEach((a) => { prev[a.id] = state.lastPrices[a.id]; });
+  state.assets.forEach((a) => { state.assetPhases[a.id] = a.phase || 'normal'; });
   state.lastPriceTickAt = Math.floor(Date.now() / 1000);
   renderAssets(els, state.assets, state.selectedAssetId, state.lastPrices);
   state.assets.forEach((a) => { state.lastPrices[a.id] = Number(a.lastPrice); });
@@ -182,9 +185,13 @@ async function loadPriceChart() {
   if (!state.selectedAssetId) return;
   try {
     const payload = await api.getAssetDetail(state.selectedAssetId);
-    renderPriceChart(els.priceChart, payload.history || []);
+    renderPriceChart(
+      els.priceChart,
+      payload.history || [],
+      state.assetPhases[state.selectedAssetId] || 'normal'
+    );
   } catch {
-    renderPriceChart(els.priceChart, []);
+    renderPriceChart(els.priceChart, [], state.assetPhases[state.selectedAssetId] || 'normal');
   }
 }
 
@@ -205,6 +212,8 @@ async function refreshAll() {
     state.selectedAssetId = state.assets[0].id;
   }
   state.lastPriceTickAt = Math.floor(Date.now() / 1000);
+  state.assetPhases = {};
+  state.assets.forEach((a) => { state.assetPhases[a.id] = a.phase || 'normal'; });
   state.assets.forEach((a) => { state.lastPrices[a.id] = Number(a.lastPrice); });
 
   renderAssets(els, state.assets, state.selectedAssetId, state.lastPrices);
