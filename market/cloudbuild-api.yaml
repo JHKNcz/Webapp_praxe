@@ -32,10 +32,11 @@ steps:
           ARGS+=(--vpc-connector "${_VPC_CONNECTOR}" --vpc-egress "${_VPC_EGRESS}")
         fi
 
-        gcloud "$${ARGS[@]}"
+        gcloud "${ARGS[@]}"
 
 substitutions:
-  _ARTIFACT_REGISTRY_URL: europe-west1-docker.pkg.dev/PROJECT_ID/market
+  # Replace placeholder in trigger: <region>-docker.pkg.dev/<PROJECT_ID>/<repository>
+  _ARTIFACT_REGISTRY_URL: europe-west1-docker.pkg.dev/PROJECT_ID_HERE/market
   _IMAGE_NAME: api
   _SERVICE_NAME: market-api
   _REGION: europe-west1

@@ -29,12 +29,16 @@ steps:
       - BACKEND_URL=${_BACKEND_URL},WS_GATEWAY_URL=${_WS_GATEWAY_URL}
 
 substitutions:
-  _ARTIFACT_REGISTRY_URL: europe-west1-docker.pkg.dev/PROJECT_ID/market
+  # Replace placeholder in trigger: <region>-docker.pkg.dev/<PROJECT_ID>/<repository>
+  _ARTIFACT_REGISTRY_URL: europe-west1-docker.pkg.dev/PROJECT_ID_HERE/market
   _IMAGE_NAME: frontend
   _SERVICE_NAME: market-frontend
   _REGION: europe-west1
-  _BACKEND_URL: https://market-api-xxxxx-ew.a.run.app
-  _WS_GATEWAY_URL: https://market-ws-gateway-xxxxx-ew.a.run.app
+  # Deploy order: API + WS first, then set their URLs here before frontend deploy.
+  # Replace with real Cloud Run URL of deployed API service.
+  _BACKEND_URL: https://market-api-REPLACE-WITH-SERVICE-ID-ew.a.run.app
+  # Replace with real Cloud Run URL of deployed WS gateway service.
+  _WS_GATEWAY_URL: https://market-ws-gateway-REPLACE-WITH-SERVICE-ID-ew.a.run.app
 
 images:
   - ${_ARTIFACT_REGISTRY_URL}/${_IMAGE_NAME}:${SHORT_SHA}
