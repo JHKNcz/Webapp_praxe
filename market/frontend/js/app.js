@@ -15,8 +15,6 @@ import {
   renderTransactions,
 } from './ui-render.js';
 
-const PRICE_POLL_MS = 5000;
-
 const state = {
   sessionId:       localStorage.getItem('market.sessionId') || '',
   nickname:        localStorage.getItem('market.nickname')  || '',
@@ -24,7 +22,6 @@ const state = {
   assets:          [],
   lastPrices:      {},
   lastPriceTickAt: 0,
-  pricePollTimer:  null,
 };
 
 const els = {
@@ -73,22 +70,7 @@ function showLobbyError(message) {
   els.lobbyError.classList.toggle('hidden', !message);
 }
 
-function stopPricePoll() {
-  if (state.pricePollTimer !== null) {
-    clearInterval(state.pricePollTimer);
-    state.pricePollTimer = null;
-  }
-}
-
-function startPricePoll() {
-  stopPricePoll();
-  state.pricePollTimer = setInterval(() => {
-    pollMarketPrices().catch(() => {});
-  }, PRICE_POLL_MS);
-}
-
 function clearSession(message = '') {
-  stopPricePoll();
   localStorage.removeItem('market.sessionId');
   localStorage.removeItem('market.nickname');
   state.sessionId = '';
@@ -148,14 +130,6 @@ async function loadPriceChart() {
   } catch {
     renderPriceChart(els.priceChart, []);
   }
-}
-
-async function pollMarketPrices() {
-  if (!state.sessionId) return;
-  const payload = await apiCall(() => api.tickAssets());
-  applyAssetPrices(payload.items || []);
-  await refreshPortfolioOnly();
-  await loadPriceChart();
 }
 
 async function refreshAll() {
@@ -224,7 +198,6 @@ async function enterGame() {
     els.lobby.classList.add('hidden');
     els.game.classList.remove('hidden');
     await refreshAll();
-    startPricePoll();
     showToast(COPY.toastWelcome);
   } catch (error) {
     showLobbyError(error.message);
@@ -233,7 +206,6 @@ async function enterGame() {
 
 async function endSession() {
   if (!state.sessionId) return;
-  stopPricePoll();
   try {
     const payload = await api.endSession(state.sessionId);
     const score   = Number(payload.leaderboardEntry.score).toFixed(2);
@@ -383,7 +355,6 @@ if (state.sessionId) {
   els.game.classList.remove('hidden');
   apiCall(() => api.resumeSession(state.sessionId))
     .then(() => refreshAll())
-    .then(() => startPricePoll())
     .catch((error) => {
       if (!isSessionError(error)) {
         clearSession(COPY.sessionResumeFailed);
