@@ -11,6 +11,8 @@ Multiplayer .io-style market simulation for short sessions. Each player joins wi
 
 The runnable app lives in the [`market/`](market/) directory.
 
+Google Cloud deployment guide (Cloud Run + Cloud Build): [`market/README.md`](market/README.md).
+
 ## Repository layout
 
 ```

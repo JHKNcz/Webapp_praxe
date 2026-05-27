@@ -1,0 +1,40 @@
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -t
+      - ${_ARTIFACT_REGISTRY_URL}/${_IMAGE_NAME}:${SHORT_SHA}
+      - -f
+      - market/frontend/Dockerfile
+      - market/frontend
+
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - ${_ARTIFACT_REGISTRY_URL}/${_IMAGE_NAME}:${SHORT_SHA}
+
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    args:
+      - run
+      - deploy
+      - ${_SERVICE_NAME}
+      - --image
+      - ${_ARTIFACT_REGISTRY_URL}/${_IMAGE_NAME}:${SHORT_SHA}
+      - --region
+      - ${_REGION}
+      - --platform
+      - managed
+      - --allow-unauthenticated
+      - --set-env-vars
+      - BACKEND_URL=${_BACKEND_URL},WS_GATEWAY_URL=${_WS_GATEWAY_URL}
+
+substitutions:
+  _ARTIFACT_REGISTRY_URL: europe-west1-docker.pkg.dev/PROJECT_ID/market
+  _IMAGE_NAME: frontend
+  _SERVICE_NAME: market-frontend
+  _REGION: europe-west1
+  _BACKEND_URL: https://market-api-xxxxx-ew.a.run.app
+  _WS_GATEWAY_URL: https://market-ws-gateway-xxxxx-ew.a.run.app
+
+images:
+  - ${_ARTIFACT_REGISTRY_URL}/${_IMAGE_NAME}:${SHORT_SHA}

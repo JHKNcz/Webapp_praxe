@@ -1,0 +1,49 @@
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -t
+      - ${_ARTIFACT_REGISTRY_URL}/${_IMAGE_NAME}:${SHORT_SHA}
+      - -f
+      - market/backend/Dockerfile
+      - market/backend
+
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - ${_ARTIFACT_REGISTRY_URL}/${_IMAGE_NAME}:${SHORT_SHA}
+
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        IMAGE="${_ARTIFACT_REGISTRY_URL}/${_IMAGE_NAME}:${SHORT_SHA}"
+        ARGS=(
+          run deploy "${_SERVICE_NAME}"
+          --image "${IMAGE}"
+          --region "${_REGION}"
+          --platform managed
+          --allow-unauthenticated
+          --set-env-vars "REDIS_URL=${_REDIS_URL},REDIS_PREFIX=${_REDIS_PREFIX},INITIAL_CASH=${_INITIAL_CASH}"
+        )
+
+        if [[ -n "${_VPC_CONNECTOR}" ]]; then
+          ARGS+=(--vpc-connector "${_VPC_CONNECTOR}" --vpc-egress "${_VPC_EGRESS}")
+        fi
+
+        gcloud "$${ARGS[@]}"
+
+substitutions:
+  _ARTIFACT_REGISTRY_URL: europe-west1-docker.pkg.dev/PROJECT_ID/market
+  _IMAGE_NAME: api
+  _SERVICE_NAME: market-api
+  _REGION: europe-west1
+  _REDIS_URL: redis://10.0.0.3:6379
+  _REDIS_PREFIX: market:
+  _INITIAL_CASH: '10000'
+  _VPC_CONNECTOR: ''
+  _VPC_EGRESS: private-ranges-only
+
+images:
+  - ${_ARTIFACT_REGISTRY_URL}/${_IMAGE_NAME}:${SHORT_SHA}
