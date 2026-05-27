@@ -111,7 +111,14 @@ final class AssetService
 
         if ($updated && $this->eventPublisher !== null) {
             $items = array_map(static fn (Asset $asset): array => $asset->toArray(), $this->assetRepository->all());
-            $this->eventPublisher->publishPriceTick($items, $pendingEvents[0] ?? null);
+
+            if ($pendingEvents === []) {
+                $this->eventPublisher->publishPriceTick($items);
+            } else {
+                foreach ($pendingEvents as $event) {
+                    $this->eventPublisher->publishPriceTick($items, $event);
+                }
+            }
 
             if ($this->leaderboardService !== null && $this->activeSessionRegistry !== null) {
                 $this->leaderboardService->refreshAllActive($this->activeSessionRegistry);
