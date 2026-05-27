@@ -7,6 +7,7 @@ import {
   updateHeroRank,
   renderAssets,
   renderLivePrice,
+  renderNewsTicker,
   renderPriceChart,
   renderPortfolio,
   renderOrderBook,
@@ -24,6 +25,9 @@ const state = {
   lastPriceTickAt: 0,
 };
 
+const MAX_NEWS = 8;
+const newsQueue = [];
+
 const els = {
   lobby:          document.getElementById('lobby'),
   game:           document.getElementById('game'),
@@ -37,6 +41,7 @@ const els = {
   heroPnlPct:     document.getElementById('hero-pnl-pct'),
   heroRank:       document.getElementById('hero-rank'),
   topbarPrice:    document.getElementById('topbar-price'),
+  newsTicker:     document.getElementById('news-ticker'),
   endBtn:         document.getElementById('end-btn'),
   assetList:      document.getElementById('asset-list'),
   portfolio:      document.getElementById('portfolio'),
@@ -59,6 +64,18 @@ const els = {
   priceChart:     document.getElementById('price-chart'),
   toast:          document.getElementById('toast'),
 };
+
+function pushHeadline(headline) {
+  if (typeof headline !== 'string') return;
+  const normalized = headline.trim();
+  if (!normalized) return;
+  if (newsQueue[newsQueue.length - 1] === normalized) return;
+  newsQueue.push(normalized);
+  if (newsQueue.length > MAX_NEWS) {
+    newsQueue.splice(0, newsQueue.length - MAX_NEWS);
+  }
+  renderNewsTicker(els.newsTicker, newsQueue);
+}
 
 function showToast(message) {
   els.toast.textContent = message;
@@ -357,6 +374,9 @@ createMarketSocket({
   onMessage(payload) {
     if (payload.type === 'price_tick') {
       applyAssetPrices(payload.items || []);
+      if (payload.event?.headline) {
+        pushHeadline(payload.event.headline);
+      }
       if (state.sessionId) {
         refreshPortfolioOnly().catch(() => {});
         loadPriceChart().catch(() => {});

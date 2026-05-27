@@ -80,6 +80,24 @@ export function renderLivePrice(els, asset, lastPrices, lastPriceTickAt) {
   els.selectedAsset.textContent = `${asset.name} @ ${formatValue(price)}`;
 }
 
+export function renderNewsTicker(el, headlines) {
+  if (!el) return;
+  const queue = (headlines || []).filter((item) => typeof item === 'string' && item.trim().length > 0);
+  if (queue.length === 0) {
+    el.classList.remove('is-active');
+    el.innerHTML = '';
+    return;
+  }
+
+  const text = queue.join(' \u2022 ');
+  const escaped = text
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;');
+  el.classList.add('is-active');
+  el.innerHTML = `<p class="news-ticker-track">${escaped}</p>`;
+}
+
 // ── Price chart ──────────────────────────────────────────────────────────────
 
 export function renderPriceChart(priceChart, history) {

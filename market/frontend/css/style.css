@@ -267,6 +267,51 @@ input:focus {
   text-overflow: ellipsis;
 }
 
+.news-ticker {
+  margin: 0 1rem;
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  background: rgba(18, 15, 12, 0.82);
+  min-height: 2rem;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+}
+
+.news-ticker:not(.is-active) {
+  opacity: 0;
+}
+
+.news-ticker-track {
+  margin: 0;
+  padding-left: 100%;
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: 0.82rem;
+  letter-spacing: 0.01em;
+  font-weight: 600;
+  text-transform: none;
+  animation: news-ticker-scroll 28s linear infinite;
+}
+
+@keyframes news-ticker-scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .news-ticker-track {
+    animation: none;
+    padding-left: 0.9rem;
+    white-space: normal;
+  }
+}
+
 /* ── Player Hero Block (RPG stat card) ─────────────────────── */
 .player-hero {
   margin: 1rem;
