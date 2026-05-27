@@ -41,7 +41,7 @@ substitutions:
   _SERVICE_NAME: market-api
   _REGION: europe-west1
   _REDIS_URL: redis://10.0.0.3:6379
-  _REDIS_PREFIX: market:
+  _REDIS_PREFIX: "market:"
   _INITIAL_CASH: '10000'
   _VPC_CONNECTOR: ''
   _VPC_EGRESS: private-ranges-only
