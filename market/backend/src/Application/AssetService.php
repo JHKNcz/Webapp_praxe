@@ -90,7 +90,8 @@ final class AssetService
                 continue;
             }
 
-            $nextPricePoint = $this->priceGeneratorService->nextPrice($asset);
+            $result = $this->priceGeneratorService->nextPrice($asset);
+            $nextPricePoint = $result['pricePoint'];
             $this->priceHistoryRepository->append($nextPricePoint);
             $asset->setLastPrice($nextPricePoint->getPrice());
             $this->assetRepository->save($asset);
