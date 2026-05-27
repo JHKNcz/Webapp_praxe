@@ -31,7 +31,7 @@ export function formatTime(ts) {
 }
 
 // Starting capital from backend config (app.php initial_cash default)
-export const INITIAL_CASH = 10000;
+export const INITIAL_CASH = 1000;
 
 // Computes return % vs starting capital for leaderboard entries
 export function leaderboardReturn(score) {
