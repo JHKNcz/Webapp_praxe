@@ -54,10 +54,14 @@ export const api = {
     return payload.portfolio;
   },
 
-  async placeOrder(sessionId, assetId, side, quantity, mode = 'market') {
+  async placeOrder(sessionId, assetId, side, quantity, mode = 'market', limitPrice = null) {
+    const body = { sessionId, assetId, side, quantity, mode };
+    if (limitPrice != null) {
+      body.limitPrice = limitPrice;
+    }
     const payload = await request('/orders', {
       method: 'POST',
-      body: JSON.stringify({ sessionId, assetId, side, quantity, mode }),
+      body: JSON.stringify(body),
     });
     return payload;
   },

@@ -22,13 +22,15 @@ final class OrderController
         $side = (string) $request->input('side', '');
         $quantity = (int) $request->input('quantity', 0);
         $mode = (string) $request->input('mode', 'market');
+        $limitPriceRaw = $request->input('limitPrice');
+        $limitPrice = $limitPriceRaw !== null && $limitPriceRaw !== '' ? (float) $limitPriceRaw : null;
 
         if ($sessionId === '' || $assetId === '' || $side === '' || $quantity <= 0) {
             return JsonResponse::error('sessionId, assetId, side and quantity are required', 422, 'validation_error');
         }
 
         return JsonResponse::success([
-            'result' => $this->orderService->placeOrder($sessionId, $assetId, $side, $quantity, $mode),
+            'result' => $this->orderService->placeOrder($sessionId, $assetId, $side, $quantity, $mode, $limitPrice),
         ]);
     }
 

@@ -47,6 +47,7 @@ const els = {
   livePriceTime:  document.getElementById('live-price-time'),
   selectedAsset:  document.getElementById('selected-asset'),
   quantity:       document.getElementById('quantity'),
+  limitPrice:     document.getElementById('limit-price'),
   buyBtn:         document.getElementById('buy-btn'),
   sellBtn:        document.getElementById('sell-btn'),
   postBuyBtn:     document.getElementById('post-buy-btn'),
@@ -105,6 +106,12 @@ function getSelectedAsset() {
   return state.assets.find((a) => a.id === state.selectedAssetId) || null;
 }
 
+function syncDefaultLimitPrice() {
+  const asset = getSelectedAsset();
+  if (!asset || els.limitPrice._userEdited) return;
+  els.limitPrice.value = Number(asset.lastPrice).toFixed(2);
+}
+
 function applyAssetPrices(items) {
   const prev = { ...state.lastPrices };
   state.assets = items || [];
@@ -113,6 +120,7 @@ function applyAssetPrices(items) {
   renderAssets(els, state.assets, state.selectedAssetId, state.lastPrices);
   state.assets.forEach((a) => { state.lastPrices[a.id] = Number(a.lastPrice); });
   renderLivePrice(els, getSelectedAsset(), prev, state.lastPriceTickAt);
+  syncDefaultLimitPrice();
 }
 
 async function refreshPortfolioOnly() {
@@ -153,6 +161,7 @@ async function refreshAll() {
 
   renderAssets(els, state.assets, state.selectedAssetId, state.lastPrices);
   renderLivePrice(els, getSelectedAsset(), state.lastPrices, state.lastPriceTickAt);
+  syncDefaultLimitPrice();
   renderPortfolio(els, portfolioPayload, state.assets);
   renderHero(els, portfolioPayload, state.nickname);
   renderOpenOrders(els, ordersPayload.items, state.assets);
@@ -232,8 +241,9 @@ async function placeTrade(side, mode = 'market') {
   els.tradeMsg.textContent = '';
   setButtonsDisabled(true);
   try {
+    const limitPrice = mode === 'limit' ? Number(els.limitPrice.value) : null;
     const payload = await apiCall(() =>
-      api.placeOrder(state.sessionId, state.selectedAssetId, side, quantity, mode)
+      api.placeOrder(state.sessionId, state.selectedAssetId, side, quantity, mode, limitPrice)
     );
     const result = payload.result;
     tradeToast(result);
@@ -293,11 +303,16 @@ els.sellBtn.addEventListener('click',    () => placeTrade('sell', 'market'));
 els.postBuyBtn.addEventListener('click', () => placeTrade('buy',  'limit'));
 els.postSellBtn.addEventListener('click',() => placeTrade('sell', 'limit'));
 
+els.limitPrice._userEdited = false;
+els.limitPrice.addEventListener('input', () => { els.limitPrice._userEdited = true; });
+
 els.assetList.addEventListener('click', async (e) => {
   const item = e.target.closest('[data-id]');
   if (!item) return;
   state.selectedAssetId = item.dataset.id;
+  els.limitPrice._userEdited = false;
   renderAssets(els, state.assets, state.selectedAssetId, state.lastPrices);
+  syncDefaultLimitPrice();
   const [book] = await Promise.all([
     api.getOrderBook(state.selectedAssetId),
     loadPriceChart(),

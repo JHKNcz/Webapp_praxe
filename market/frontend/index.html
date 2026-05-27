@@ -86,14 +86,16 @@
           <p class="selected-label">Selected: <strong id="selected-asset">—</strong></p>
           <label for="quantity" class="field-label">Quantity</label>
           <input id="quantity" type="number" min="1" value="1" inputmode="numeric">
-          <p class="hint">Market = instant fill against the exchange. Post = adds your order to the book at current market price.</p>
+          <label for="limit-price" class="field-label">Limit Price <span class="field-label-note">(for limit orders)</span></label>
+          <input id="limit-price" type="number" min="0.01" step="0.01" inputmode="decimal">
+          <p class="hint">Market = instant fill against the exchange. Limit = adds your order to the book at the price you set (defaults to current market price).</p>
           <div class="actions">
             <button id="buy-btn"  type="button" class="btn btn-buy">Market Buy</button>
             <button id="sell-btn" type="button" class="btn btn-sell">Market Sell</button>
           </div>
           <div class="actions">
-            <button id="post-buy-btn"  type="button" class="btn btn-secondary">Post Buy</button>
-            <button id="post-sell-btn" type="button" class="btn btn-secondary btn-sell-post">Post Sell</button>
+            <button id="post-buy-btn"  type="button" class="btn btn-secondary">Limit Buy</button>
+            <button id="post-sell-btn" type="button" class="btn btn-secondary btn-sell-post">Limit Sell</button>
           </div>
           <p id="trade-msg" class="hint trade-msg"></p>
           <h3 class="panel-subtitle">Open Orders</h3>

@@ -22,10 +22,15 @@ final class OrderService
     ) {
     }
 
-    public function placeOrder(string $sessionId, string $assetId, string $side, int $quantity, string $mode = 'market'): array
+    public function placeOrder(string $sessionId, string $assetId, string $side, int $quantity, string $mode = 'market', ?float $limitPrice = null): array
     {
         if ($mode === 'limit') {
-            return $this->postLimitOrder($sessionId, $assetId, $side, $quantity);
+            if ($limitPrice === null) {
+                $asset = $this->requireAsset($assetId);
+                $limitPrice = (float) $asset['lastPrice'];
+            }
+
+            return $this->postLimitOrder($sessionId, $assetId, $side, $quantity, $limitPrice);
         }
 
         return $this->placeMarketOrder($sessionId, $assetId, $side, $quantity);
@@ -49,13 +54,17 @@ final class OrderService
         ];
     }
 
-    public function postLimitOrder(string $sessionId, string $assetId, string $side, int $quantity): array
+    public function postLimitOrder(string $sessionId, string $assetId, string $side, int $quantity, float $limitPrice): array
     {
         $this->assertActiveSession($sessionId);
         $this->validateSideAndQuantity($side, $quantity);
 
-        $asset = $this->requireAsset($assetId);
-        $price = (float) $asset['lastPrice'];
+        if ($limitPrice <= 0) {
+            throw new DomainException('Limit price must be greater than zero');
+        }
+
+        $this->requireAsset($assetId);
+        $price = $limitPrice;
         $portfolio = $this->portfolioService->getPortfolio($sessionId);
 
         if ($side === 'buy') {
