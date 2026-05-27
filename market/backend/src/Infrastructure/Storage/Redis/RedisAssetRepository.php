@@ -51,6 +51,10 @@ final class RedisAssetRepository
             'fairPrice' => $asset->getFairPrice(),
             'risk' => $asset->getRisk(),
             'trendSlope' => $asset->getTrendSlope(),
+            'currentSlope' => $asset->getCurrentSlope(),
+            'phase' => $asset->getPhase(),
+            'phaseTicksRemaining' => $asset->getPhaseTicksRemaining(),
+            'phaseTotalDuration' => $asset->getPhaseTotalDuration(),
         ]);
         $this->redis->sadd('assets:index', $asset->getId());
     }
@@ -88,7 +92,11 @@ final class RedisAssetRepository
             (float) ($data['lastPrice'] ?? 0.0),
             (float) ($data['fairPrice'] ?? 0.0),
             (float) ($data['risk'] ?? 0.2),
-            (float) ($data['trendSlope'] ?? 0.0)
+            (float) ($data['trendSlope'] ?? 0.0),
+            (float) ($data['currentSlope'] ?? 0.0),
+            (string) ($data['phase'] ?? 'normal'),
+            (int) ($data['phaseTicksRemaining'] ?? 0),
+            (int) ($data['phaseTotalDuration'] ?? 0),
         );
     }
 }
