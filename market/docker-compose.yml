@@ -38,7 +38,7 @@ services:
       # Key prefix so Redis keys are isolated from other apps.
       REDIS_PREFIX: ${REDIS_PREFIX:-market:}
       # Starting session cash for each player.
-      INITIAL_CASH: ${INITIAL_CASH:-10000}
+      INITIAL_CASH: ${INITIAL_CASH:-1000}
     depends_on:
       # Startup order only (does not wait for readiness/health).
       - redis
@@ -60,6 +60,7 @@ services:
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
       # Container port used by the websocket server process.
       WS_PORT: "3001"
+      API_URL: "http://api:8000"
     depends_on:
       # Startup order only (does not wait for readiness/health).
       - redis

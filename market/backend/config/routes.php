@@ -12,6 +12,7 @@ return [
     ['method' => 'GET', 'path' => '/portfolio', 'controller' => 'portfolio', 'action' => 'show'],
     ['method' => 'POST', 'path' => '/orders', 'controller' => 'order', 'action' => 'store'],
     ['method' => 'POST', 'path' => '/orders/{id}/take', 'controller' => 'order', 'action' => 'take'],
+    ['method' => 'DELETE', 'path' => '/orders/{id}', 'controller' => 'order', 'action' => 'cancel'],
     ['method' => 'GET', 'path' => '/orders', 'controller' => 'order', 'action' => 'index'],
     ['method' => 'GET', 'path' => '/orderbook/{id}', 'controller' => 'order', 'action' => 'book'],
     ['method' => 'GET', 'path' => '/transactions', 'controller' => 'transaction', 'action' => 'index'],

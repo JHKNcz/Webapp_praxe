@@ -67,8 +67,8 @@ $tests['Price generator mean reversion'] = static function (): void {
     $generator = new PriceGeneratorService();
     $asset = new Asset('asset-1', 'Alpha', 80.0, 100.0, 0.0, 0.0);
 
-    $point = $generator->nextPrice($asset);
-    $price = $point->getPrice();
+    $result = $generator->nextPrice($asset);
+    $price = $result['pricePoint']->getPrice();
 
     assertTrue($price > 80.0, 'Price moves toward fair price');
     assertTrue($price < 100.0, 'Price does not jump past fair price');

@@ -48,6 +48,22 @@ subscriber.on('message', (channel, message) => {
   }
 });
 
+const apiBase = process.env.API_URL || 'http://api:8000';
+const tickIntervalMs = Number(process.env.TICK_INTERVAL_MS || 1000);
+let tickRunning = false;
+
+setInterval(async () => {
+  if (tickRunning) return;
+  tickRunning = true;
+  try {
+    await fetch(`${apiBase}/assets/tick`);
+  } catch {
+    // API not yet ready or transient error — ignore
+  } finally {
+    tickRunning = false;
+  }
+}, tickIntervalMs);
+
 server.listen(port, () => {
   console.log(`WS gateway listening on :${port}`);
 });

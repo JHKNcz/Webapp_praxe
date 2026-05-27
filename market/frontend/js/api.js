@@ -45,7 +45,7 @@ export const api = {
     return request('/assets/tick');
   },
 
-  async getAssetDetail(assetId, limit = 40) {
+  async getAssetDetail(assetId, limit = 200) {
     return request(`/assets/${encodeURIComponent(assetId)}?limit=${limit}`);
   },
 
@@ -54,10 +54,14 @@ export const api = {
     return payload.portfolio;
   },
 
-  async placeOrder(sessionId, assetId, side, quantity, mode = 'market') {
+  async placeOrder(sessionId, assetId, side, quantity, mode = 'market', limitPrice = null) {
+    const body = { sessionId, assetId, side, quantity, mode };
+    if (limitPrice != null) {
+      body.limitPrice = limitPrice;
+    }
     const payload = await request('/orders', {
       method: 'POST',
-      body: JSON.stringify({ sessionId, assetId, side, quantity, mode }),
+      body: JSON.stringify(body),
     });
     return payload;
   },
@@ -72,6 +76,14 @@ export const api = {
 
   async getOpenOrders(sessionId) {
     const payload = await request(`/orders?sessionId=${encodeURIComponent(sessionId)}`);
+    return payload;
+  },
+
+  async cancelOrder(sessionId, orderId) {
+    const payload = await request(`/orders/${encodeURIComponent(orderId)}`, {
+      method: 'DELETE',
+      body: JSON.stringify({ sessionId }),
+    });
     return payload;
   },
 

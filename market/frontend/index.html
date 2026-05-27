@@ -1,86 +1,138 @@
 <!DOCTYPE html>
-<html lang="cs">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Market.io</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
   <div id="app">
-    <section id="lobby" class="panel">
-      <h1>Market.io</h1>
-      <p>Simulovaná burza — maximalizuj hodnotu portfolia.</p>
-      <label for="nickname">Přezdívka</label>
-      <input id="nickname" type="text" maxlength="16" placeholder="Trader42" autocomplete="off">
-      <button id="enter-btn" type="button">Vstoupit na burzu</button>
+
+    <!-- LOBBY -->
+    <section id="lobby" class="lobby-panel panel-frame">
+      <div class="lobby-brand">
+        <h1 class="brand-title">Market<span class="brand-dot">.</span>io</h1>
+        <p class="lobby-tagline">Simulated stock exchange — maximize your portfolio value.</p>
+      </div>
+      <label for="nickname" class="field-label">Nickname</label>
+      <input id="nickname" type="text" maxlength="16" placeholder="Trader42"
+             autocomplete="off" inputmode="text">
+      <button id="enter-btn" type="button" class="btn btn-primary btn-lg">Enter the Market</button>
       <p id="lobby-error" class="error hidden"></p>
     </section>
 
+    <!-- GAME -->
     <section id="game" class="hidden">
-      <header class="topbar">
-        <span class="brand">Market.io</span>
-        <span id="player-name"></span>
+
+      <header class="topbar panel-frame">
+        <span class="topbar-brand">Market.io</span>
+        <time id="market-clock" class="market-clock" datetime="">--:--:--</time>
         <span id="topbar-price" class="topbar-price"></span>
-        <span id="session-value"></span>
-        <button id="end-btn" type="button">Ukončit session</button>
+        <button id="end-btn" type="button" class="btn btn-ghost btn-sm">End Session</button>
       </header>
 
+      <section id="news-panel" class="news-panel panel-frame" aria-live="polite">
+        <h2 class="news-panel-title">Market Wire</h2>
+        <p id="news-empty" class="news-empty">No headlines yet — watch for breaking news.</p>
+        <ul id="news-feed" class="news-feed"></ul>
+      </section>
+
+      <!-- Player Hero Block -->
+      <div id="player-hero" class="player-hero panel-frame">
+        <div class="hero-name-row">
+          <span class="hero-avatar" aria-hidden="true">⚔</span>
+          <span id="player-name" class="hero-name"></span>
+          <span id="hero-rank" class="hero-rank-badge"></span>
+        </div>
+        <div class="hero-stats">
+          <div class="hero-stat">
+            <span class="hero-stat-label">Portfolio</span>
+            <span id="hero-total" class="hero-stat-value hero-stat-primary"></span>
+          </div>
+          <div class="hero-stat">
+            <span class="hero-stat-label">Cash</span>
+            <span id="hero-cash" class="hero-stat-value"></span>
+          </div>
+          <div class="hero-stat">
+            <span class="hero-stat-label">P&amp;L</span>
+            <span id="hero-pnl" class="hero-stat-value"></span>
+          </div>
+          <div class="hero-stat">
+            <span class="hero-stat-label">Return</span>
+            <span id="hero-pnl-pct" class="hero-stat-value"></span>
+          </div>
+        </div>
+      </div>
+
       <main class="grid">
-        <section class="panel">
-          <h2>Instrumenty</h2>
+
+        <!-- Instruments -->
+        <section class="panel panel-frame">
+          <h2 class="panel-title">Instruments</h2>
           <ul id="asset-list"></ul>
         </section>
 
-        <section class="panel">
-          <h2>Portfolio</h2>
-          <div id="portfolio"></div>
-          <h3>Order book (hráči)</h3>
-          <p class="hint">Klik na Buy/Sell u řádku = obchod s hráčem (množství z pole níže).</p>
-          <div id="orderbook" class="orderbook"></div>
-        </section>
-
-        <section class="panel">
-          <h2>Obchodování</h2>
+        <!-- Trading -->
+        <section class="panel panel-frame panel-trading">
+          <h2 class="panel-title">Trading</h2>
           <div id="live-price" class="live-price">
-            <span class="live-price-label">Živá cena</span>
+            <span class="live-price-label">Live Price</span>
             <span id="live-price-name" class="live-price-name">—</span>
             <span id="live-price-value" class="live-price-value">—</span>
             <span id="live-price-time" class="live-price-time"></span>
           </div>
           <div id="price-chart-wrap" class="price-chart-wrap">
-            <span class="live-price-label">Vývoj ceny</span>
-            <svg id="price-chart" class="price-chart" viewBox="0 0 320 120" preserveAspectRatio="none" aria-hidden="true"></svg>
+            <span class="live-price-label">Price History</span>
+            <svg id="price-chart" class="price-chart"
+                 viewBox="0 0 320 200" preserveAspectRatio="none" aria-hidden="true"></svg>
           </div>
-          <p>Vybráno: <strong id="selected-asset">-</strong></p>
-          <label for="quantity">Množství</label>
-          <input id="quantity" type="number" min="1" value="1">
-          <p class="hint">Market = okamžitě proti burze. Post = nabídka do booku za aktuální tržní cenu.</p>
+          <p class="selected-label">Selected: <strong id="selected-asset">—</strong></p>
+          <label for="quantity" class="field-label">Quantity</label>
+          <input id="quantity" type="number" min="1" value="1" inputmode="numeric">
+          <label for="limit-price" class="field-label">Limit Price <span class="field-label-note">(for limit orders)</span></label>
+          <input id="limit-price" type="number" min="0.01" step="0.01" inputmode="decimal">
+          <p class="hint">Market = instant fill against the exchange. Limit = adds your order to the book at the price you set (defaults to current market price).</p>
           <div class="actions">
-            <button id="buy-btn" type="button">Market Nákup</button>
-            <button id="sell-btn" type="button" class="danger">Market Prodej</button>
+            <button id="buy-btn"  type="button" class="btn btn-buy">Market Buy</button>
+            <button id="sell-btn" type="button" class="btn btn-sell">Market Sell</button>
           </div>
           <div class="actions">
-            <button id="post-buy-btn" type="button" class="secondary">Post nákup (tržní)</button>
-            <button id="post-sell-btn" type="button" class="secondary danger">Post prodej (tržní)</button>
+            <button id="post-buy-btn"  type="button" class="btn btn-secondary">Limit Buy</button>
+            <button id="post-sell-btn" type="button" class="btn btn-secondary btn-sell-post">Limit Sell</button>
           </div>
-          <p id="trade-msg" class="hint"></p>
-          <h3>Otevřené objednávky</h3>
+          <p id="trade-msg" class="hint trade-msg"></p>
+          <h3 class="panel-subtitle">Open Orders</h3>
           <ul id="open-orders"></ul>
         </section>
 
-        <section class="panel">
-          <h2>Žebříček</h2>
+        <!-- Portfolio + Order Book -->
+        <section class="panel panel-frame">
+          <h2 class="panel-title">Portfolio</h2>
+          <div id="portfolio"></div>
+          <h3 class="panel-subtitle">Order Book (Players)</h3>
+          <p class="hint">Tap Buy/Sell on a row to trade with that player (uses quantity below).</p>
+          <div id="orderbook" class="orderbook"></div>
+        </section>
+
+        <!-- Hall of Fame + Trade History -->
+        <section class="panel panel-frame panel-hall-of-fame">
+          <h2 class="panel-title hall-of-fame-title">🏆 Hall of Fame</h2>
           <ol id="leaderboard"></ol>
-          <h3>Historie obchodů</h3>
+          <h3 class="panel-subtitle">Trade History</h3>
           <div id="transactions" class="transactions"></div>
         </section>
+
       </main>
     </section>
   </div>
 
   <div id="toast" class="toast hidden"></div>
-
+  <div id="news-alert" class="news-alert hidden" role="status" aria-live="assertive"></div>
   <script type="module" src="/js/app.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
 </body>
 </html>

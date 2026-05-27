@@ -32,10 +32,8 @@ final class AssetService
     public function tick(): array
     {
         $this->refreshMarket(true);
-        $items = array_map(static fn (Asset $asset): array => $asset->toArray(), $this->assetRepository->all());
-        $this->eventPublisher?->publishPriceTick($items);
 
-        return $items;
+        return array_map(static fn (Asset $asset): array => $asset->toArray(), $this->assetRepository->all());
     }
 
     public function getAsset(string $assetId): ?array
@@ -72,6 +70,7 @@ final class AssetService
     private function refreshMarket(bool $forceTick = false): void
     {
         $updated = false;
+        $pendingEvents = [];
 
         foreach ($this->assetRepository->all() as $asset) {
             $lastPricePoint = $this->priceHistoryRepository->last($asset->getId());
@@ -90,7 +89,11 @@ final class AssetService
                 continue;
             }
 
-            $nextPricePoint = $this->priceGeneratorService->nextPrice($asset);
+            $result = $this->priceGeneratorService->nextPrice($asset);
+            $nextPricePoint = $result['pricePoint'];
+            if ($result['event'] !== null) {
+                $pendingEvents[] = $result['event'];
+            }
             $this->priceHistoryRepository->append($nextPricePoint);
             $asset->setLastPrice($nextPricePoint->getPrice());
             $this->assetRepository->save($asset);
@@ -108,7 +111,14 @@ final class AssetService
 
         if ($updated && $this->eventPublisher !== null) {
             $items = array_map(static fn (Asset $asset): array => $asset->toArray(), $this->assetRepository->all());
-            $this->eventPublisher->publishPriceTick($items);
+
+            if ($pendingEvents === []) {
+                $this->eventPublisher->publishPriceTick($items);
+            } else {
+                foreach ($pendingEvents as $event) {
+                    $this->eventPublisher->publishPriceTick($items, $event);
+                }
+            }
 
             if ($this->leaderboardService !== null && $this->activeSessionRegistry !== null) {
                 $this->leaderboardService->refreshAllActive($this->activeSessionRegistry);
