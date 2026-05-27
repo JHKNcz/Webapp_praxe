@@ -295,6 +295,27 @@ async function takeOrder(orderId) {
   }
 }
 
+async function cancelOrder(orderId) {
+  if (!state.sessionId || !orderId) return;
+  els.tradeMsg.textContent = '';
+  setButtonsDisabled(true);
+  try {
+    await apiCall(() => api.cancelOrder(state.sessionId, orderId));
+    showToast(COPY.actionCancelOrder);
+    const [orders, portfolio] = await Promise.all([
+      api.getOpenOrders(state.sessionId),
+      api.getPortfolio(state.sessionId),
+    ]);
+    renderOpenOrders(els, orders.items, state.assets);
+    renderPortfolio(els, portfolio, state.assets);
+    renderHero(els, portfolio, state.nickname);
+  } catch (error) {
+    if (!isSessionError(error)) els.tradeMsg.textContent = error.message;
+  } finally {
+    setButtonsDisabled(false);
+  }
+}
+
 els.enterBtn.addEventListener('click', enterGame);
 els.nickname.addEventListener('keydown', (e) => { if (e.key === 'Enter') enterGame(); });
 els.endBtn.addEventListener('click', endSession);
@@ -324,6 +345,12 @@ els.orderbook.addEventListener('click', (e) => {
   const btn = e.target.closest('[data-order-id]');
   if (!btn || btn.disabled) return;
   takeOrder(btn.dataset.orderId);
+});
+
+els.openOrders.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-cancel-order-id]');
+  if (!btn || btn.disabled) return;
+  cancelOrder(btn.dataset.cancelOrderId);
 });
 
 createMarketSocket({

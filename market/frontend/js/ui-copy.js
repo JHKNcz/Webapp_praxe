@@ -49,6 +49,7 @@ export const COPY = {
   postSellBtn: 'Post Sell',
   actionBuy: 'Buy',
   actionSell: 'Sell',
+  actionCancelOrder: 'Cancel',
   noOpenOrders: 'No open orders',
 
   // Leaderboard

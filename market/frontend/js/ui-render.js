@@ -184,7 +184,7 @@ export function renderOpenOrders(els, items, assets) {
     (items || [])
       .map(
         (o) =>
-          `<li>${o.side.toUpperCase()} ${o.remainingQty}× ${assetName(o.assetId)} @ ${formatValue(o.price)} <span class="order-status">(${o.status})</span></li>`
+          `<li>${o.side.toUpperCase()} ${o.remainingQty}× ${assetName(o.assetId)} @ ${formatValue(o.price)} <span class="order-status">(${o.status})</span> <button type="button" class="order-cancel btn btn-ghost btn-xs" data-cancel-order-id="${o.id}">${COPY.actionCancelOrder}</button></li>`
       )
       .join('') || `<li class="empty-state">${COPY.noOpenOrders}</li>`;
 }

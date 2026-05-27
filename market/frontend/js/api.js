@@ -79,6 +79,14 @@ export const api = {
     return payload;
   },
 
+  async cancelOrder(sessionId, orderId) {
+    const payload = await request(`/orders/${encodeURIComponent(orderId)}`, {
+      method: 'DELETE',
+      body: JSON.stringify({ sessionId }),
+    });
+    return payload;
+  },
+
   async getOrderBook(assetId) {
     const payload = await request(`/orderbook/${encodeURIComponent(assetId)}`);
     return payload;

@@ -212,7 +212,7 @@ $orderCancellationService = new Market\Application\OrderCancellationService(
 $controllers = [
     'asset' => new Market\Controller\AssetController($assetService),
     'portfolio' => new Market\Controller\PortfolioController($portfolioService),
-    'order' => new Market\Controller\OrderController($orderService),
+    'order' => new Market\Controller\OrderController($orderService, $orderCancellationService),
     'session' => new Market\Controller\SessionController(
         $sessionService,
         $leaderboardService,

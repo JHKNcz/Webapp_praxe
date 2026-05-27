@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Market\Controller;
 
+use Market\Application\OrderCancellationService;
 use Market\Application\OrderService;
 use Market\Http\JsonResponse;
 use Market\Http\Request;
@@ -11,7 +12,10 @@ use Market\Http\Response;
 
 final class OrderController
 {
-    public function __construct(private readonly OrderService $orderService)
+    public function __construct(
+        private readonly OrderService $orderService,
+        private readonly OrderCancellationService $orderCancellationService
+    )
     {
     }
 
@@ -72,6 +76,22 @@ final class OrderController
 
         return JsonResponse::success([
             'orderbook' => $this->orderService->getOrderBook($assetId),
+        ]);
+    }
+
+    public function cancel(Request $request, array $params = []): Response
+    {
+        $orderId = (string) ($params['id'] ?? '');
+        $sessionId = (string) $request->input('sessionId', '');
+
+        if ($orderId === '' || $sessionId === '') {
+            return JsonResponse::error('order id and sessionId are required', 422, 'validation_error');
+        }
+
+        $this->orderCancellationService->cancelOne($sessionId, $orderId);
+
+        return JsonResponse::success([
+            'cancelledOrderId' => $orderId,
         ]);
     }
 }
