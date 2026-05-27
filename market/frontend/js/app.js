@@ -27,6 +27,8 @@ const state = {
 
 const MAX_NEWS = 8;
 const newsQueue = [];
+const TOAST_VARIANTS = ['toast--p2p'];
+let toastTimer = null;
 
 const els = {
   lobby:          document.getElementById('lobby'),
@@ -77,10 +79,39 @@ function pushHeadline(headline) {
   renderNewsTicker(els.newsTicker, newsQueue);
 }
 
-function showToast(message) {
+function showToast(message, extraClass = '') {
+  if (toastTimer) {
+    clearTimeout(toastTimer);
+    toastTimer = null;
+  }
   els.toast.textContent = message;
+  TOAST_VARIANTS.forEach((cssClass) => els.toast.classList.remove(cssClass));
+  if (extraClass) {
+    els.toast.classList.add(extraClass);
+  }
   els.toast.classList.remove('hidden');
-  setTimeout(() => els.toast.classList.add('hidden'), 2500);
+  toastTimer = setTimeout(() => {
+    els.toast.classList.add('hidden');
+  }, 2500);
+}
+
+function pulseTradeBtn(button) {
+  if (!button) return;
+  button.classList.remove('btn-pulse');
+  void button.offsetWidth;
+  button.classList.add('btn-pulse');
+}
+
+function fireConfetti() {
+  const confetti = window.confetti;
+  if (typeof confetti !== 'function') return;
+  confetti({
+    particleCount: 100,
+    spread: 68,
+    startVelocity: 40,
+    scalar: 0.95,
+    origin: { y: 0.72 },
+  });
 }
 
 function showLobbyError(message) {
@@ -197,17 +228,28 @@ async function refreshAll() {
   ]);
 }
 
-function tradeToast(result) {
+function tradeToast(result, context = {}) {
   const fillType = result.fillType || 'market';
   const trades   = result.trades  || [];
+  const side = context.side === 'sell' ? 'sell' : 'buy';
   if (fillType === 'market') {
-    showToast(COPY.toastFilledMarket);
+    showToast(side === 'sell' ? 'Market sell filled' : 'Market buy filled');
+    pulseTradeBtn(side === 'sell' ? els.sellBtn : els.buyBtn);
   } else if (fillType === 'limit' && trades.length > 0) {
-    showToast(COPY.toastOrderMatched(trades.length));
+    showToast(trades.length > 1 ? `Limit matched (${trades.length} fills)` : 'Limit matched');
+    pulseTradeBtn(side === 'sell' ? els.postSellBtn : els.postBuyBtn);
   } else if (fillType === 'limit') {
-    showToast(COPY.toastOrderPosted);
+    showToast('Limit posted');
+    pulseTradeBtn(side === 'sell' ? els.postSellBtn : els.postBuyBtn);
   } else if (fillType === 'p2p') {
-    showToast(COPY.toastP2P);
+    showToast('P2P deal closed', 'toast--p2p');
+    pulseTradeBtn(els.buyBtn);
+    pulseTradeBtn(els.sellBtn);
+  }
+
+  const pnlPercent = Number(result?.portfolio?.pnlPercent ?? 0);
+  if (pnlPercent >= 25) {
+    fireConfetti();
   }
 }
 
@@ -263,7 +305,7 @@ async function placeTrade(side, mode = 'market') {
       api.placeOrder(state.sessionId, state.selectedAssetId, side, quantity, mode, limitPrice)
     );
     const result = payload.result;
-    tradeToast(result);
+    tradeToast(result, { side });
     renderPortfolio(els, result.portfolio, state.assets);
     renderHero(els, result.portfolio, state.nickname);
     const [orders, book, lb, tx] = await Promise.all([
@@ -291,7 +333,7 @@ async function takeOrder(orderId) {
   setButtonsDisabled(true);
   try {
     const payload = await apiCall(() => api.takeOrder(state.sessionId, orderId, quantity));
-    tradeToast(payload.result);
+    tradeToast(payload.result, { side: 'buy' });
     renderPortfolio(els, payload.result.portfolio, state.assets);
     renderHero(els, payload.result.portfolio, state.nickname);
     const [orders, book, lb, tx] = await Promise.all([

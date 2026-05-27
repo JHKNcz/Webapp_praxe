@@ -232,6 +232,35 @@ input:focus {
 .btn-sm { min-height: 36px; font-size: 0.72rem; padding: 0.4rem 0.8rem; }
 .btn-xs { min-height: 32px; font-size: 0.7rem; padding: 0.3rem 0.65rem; }
 
+@keyframes btn-pulse {
+  0% {
+    transform: scale(1);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.15),
+      inset 0 -2px 0 rgba(0, 0, 0, 0.25),
+      0 3px 8px rgba(0, 0, 0, 0.45);
+  }
+  45% {
+    transform: scale(1.03);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.2),
+      inset 0 -2px 0 rgba(0, 0, 0, 0.2),
+      0 0 0 3px rgba(201, 162, 39, 0.2),
+      0 5px 12px rgba(0, 0, 0, 0.5);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.15),
+      inset 0 -2px 0 rgba(0, 0, 0, 0.25),
+      0 3px 8px rgba(0, 0, 0, 0.45);
+  }
+}
+
+.btn-pulse {
+  animation: btn-pulse 420ms ease-out;
+}
+
 /* ── Top Bar ───────────────────────────────────────────────── */
 .topbar {
   display: flex;
@@ -767,6 +796,14 @@ input:focus {
   text-align: center;
   box-shadow:
     0 0 20px var(--accent-glow),
+    0 6px 24px rgba(0, 0, 0, 0.6);
+}
+
+.toast--p2p {
+  border-color: #5aa2ff;
+  background: linear-gradient(165deg, #1b273d 0%, #151210 100%);
+  box-shadow:
+    0 0 18px rgba(90, 162, 255, 0.3),
     0 6px 24px rgba(0, 0, 0, 0.6);
 }
 
