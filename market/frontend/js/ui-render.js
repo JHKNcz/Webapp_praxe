@@ -28,7 +28,7 @@ export function renderHero(els, summary, nickname) {
 
 export function updateHeroRank(els, items, sessionId) {
   const idx = (items || []).findIndex((e) => e.sessionId === sessionId);
-  els.heroRank.textContent = idx >= 0 ? `#${idx + 1}` : '';
+  els.heroRank.textContent = idx >= 0 ? `Rank #${idx + 1}` : '';
 }
 
 // ── Assets list ──────────────────────────────────────────────────────────────
@@ -101,11 +101,9 @@ export function renderNewsFeed(feedEl, emptyEl, items) {
   }
   feedEl.innerHTML = list
     .map((item, index) => {
-      const phase = item.phase || 'normal';
       const fresh = index === 0 ? ' news-item--fresh' : '';
-      return `<li class="news-item news-item--${phase}${fresh}" data-asset-id="${escapeHtml(item.assetId || '')}">
+      return `<li class="news-item${fresh}" data-asset-id="${escapeHtml(item.assetId || '')}">
         <span class="news-time">${formatTime(item.ts)}</span>
-        <span class="news-phase">${phaseLabel(phase)}</span>
         <span class="news-headline">${escapeHtml(item.headline)}</span>
       </li>`;
     })
@@ -172,8 +170,7 @@ export function renderPriceChart(priceChart, history, currentPhase = 'normal', n
     .filter((m) => m.ts >= tMin && m.ts <= tMax + 2)
     .map((m) => {
       const x = toX(m.ts).toFixed(1);
-      const phase = m.phase || 'normal';
-      return `<line class="chart-event-line chart-event-line--${phase}" x1="${x}" y1="${padT}" x2="${x}" y2="${padT + chartH}" />`;
+      return `<line class="chart-event-line" x1="${x}" y1="${padT}" x2="${x}" y2="${padT + chartH}" />`;
     })
     .join('');
 

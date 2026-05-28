@@ -61,18 +61,19 @@ final class RedisAssetRepository
 
     private function ensureSeeded(): void
     {
-        if ($this->redis->smembers('assets:index') !== []) {
-            return;
-        }
-
         $seeds = $this->seedAssets !== [] ? $this->seedAssets : [
             ['id' => 'asset-1', 'name' => 'Alpha Token', 'lastPrice' => 100.0],
         ];
 
         foreach ($seeds as $seedAsset) {
+            $id = (string) $seedAsset['id'];
+            // Only seed assets that don't exist yet — additive, never overwrites live data
+            if ($this->redis->smembers('assets:index') !== [] && $this->find($id) !== null) {
+                continue;
+            }
             $lastPrice = (float) $seedAsset['lastPrice'];
             $asset = new Asset(
-                (string) $seedAsset['id'],
+                $id,
                 (string) $seedAsset['name'],
                 $lastPrice,
                 array_key_exists('fairPrice', $seedAsset) ? (float) $seedAsset['fairPrice'] : $lastPrice,
