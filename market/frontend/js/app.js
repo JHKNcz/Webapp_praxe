@@ -28,9 +28,6 @@ const state = {
   chartHistory:    {},
   chartNewsMarkers: {},
   newsItems:       [],
-  newsMinuteBucket: 0,
-  newsThisMinute:  0,
-  newsAllowedThisMinute: 5,
 };
 
 const CHART_LIMIT = 200;
@@ -81,24 +78,8 @@ const els = {
   toast:          document.getElementById('toast'),
 };
 
-function syncNewsMinuteBucket() {
-  const minute = Math.floor(Date.now() / 60000);
-  if (minute === state.newsMinuteBucket) return;
-  state.newsMinuteBucket = minute;
-  state.newsThisMinute = 0;
-  state.newsAllowedThisMinute = 1 + Math.floor(Math.random() * 5);
-}
-
-function canAcceptNewsClient() {
-  syncNewsMinuteBucket();
-  return state.newsThisMinute < state.newsAllowedThisMinute;
-}
-
 function pushNews(event) {
   if (!event?.headline) return;
-  if (!canAcceptNewsClient()) return;
-
-  state.newsThisMinute += 1;
 
   const item = {
     ts: event.ts || Math.floor(Date.now() / 1000),
@@ -144,7 +125,7 @@ function showNewsAlert(item) {
     clearTimeout(newsAlertTimer);
     newsAlertTimer = null;
   }
-  els.newsAlert.className = `news-alert news-alert--${item.phase || 'normal'}`;
+  els.newsAlert.className = 'news-alert';
   els.newsAlert.innerHTML = `<span class="news-alert-time">${formatClockNow()}</span> ${item.headline}`;
   els.newsAlert.classList.remove('hidden');
   newsAlertTimer = setTimeout(() => {

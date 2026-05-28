@@ -7,26 +7,29 @@ use Market\Domain\Entity\PricePoint;
 
 final class PriceGeneratorService
 {
-    private static int $minuteBucket = 0;
-    private static int $eventsThisMinute = 0;
-    private static int $eventsAllowedThisMinute = 0;
+    private const GLOBAL_NEWS_CAP = 5;
 
-    private const MAX_NEWS_PER_MINUTE = 4;
+    private static int   $globalMinuteBucket  = -1;
+    private static int   $globalEventsCount   = 0;
+
+    private static array $minuteBucketByAsset  = [];
+    private static array $eventsCountByAsset   = [];
+    private static array $eventsAllowedByAsset = [];
 
     private const PHASES = ['bull_run', 'bear_crash', 'pump_dump'];
 
     private const PHASE_DEFS = [
         'bull_run' => [
-            'noiseMod' => 2.0,
-            'duration' => [20, 35],
+            'noiseMod' => 2.5,
+            'duration' => [10, 20],
         ],
         'bear_crash' => [
-            'noiseMod' => 2.5,
-            'duration' => [15, 25],
+            'noiseMod' => 3.0,
+            'duration' => [10, 18],
         ],
         'pump_dump' => [
-            'noiseMod' => 1.5,
-            'duration' => [30, 45],
+            'noiseMod' => 2.0,
+            'duration' => [18, 28],
         ],
     ];
 
@@ -85,6 +88,54 @@ final class PriceGeneratorService
             'Lehmann & Bros Inc CEO spotted at Davos saying "worst is behind us" — fourth year running',
             'Lehmann & Bros Inc regulator requests additional disclosure; filing says "see prior filing"',
             'Lehmann & Bros Inc auditor footnote: "going concern language added as precaution"',
+        ],
+        'asset-4' => [
+            // bullish
+            'DogeStar Coin trending on TikTok — search volume up 4,000% overnight',
+            'Anonymous wallet moves 2B DogeStar to cold storage — "diamond hands confirmed"',
+            'DogeStar Coin accepted by a vending machine in Dubai — institutional adoption imminent',
+            'Elon posts single 🐕 emoji — DogeStar Coin halted for volatility three times',
+            'DogeStar Coin whitepaper updated; new section titled "Why This Time Is Different"',
+            'DogeStar Coin breaks all-time high of $0.12 — Reddit declares "generational wealth"',
+            // bearish
+            'DogeStar Coin dev wallet sells 40% of supply — team calls it "liquidity provision"',
+            'DogeStar Coin bridge hacked; attacker tweets "gm" afterward',
+            'DogeStar Coin rug-pull suspected — website replaced with JPEG of a dog shrugging',
+            'DogeStar Coin auditor report: "contract has 17 backdoors, none intentional allegedly"',
+            'DogeStar Coin loses 60% in 4 hours — influencer says "great time to average down"',
+            'DogeStar Coin founder arrested; tweets "I am not the founder" from jail',
+        ],
+        'asset-5' => [
+            // bullish
+            'TulipBulb Ventures AG releases new Semper Augustus cultivar — analysts raise target',
+            'Dutch nobility reportedly paying 10 oxen per TulipBulb Ventures AG share',
+            'TulipBulb Ventures AG Q1: bulb futures up 900% — CFO says "the soil is the moat"',
+            'TulipBulb Ventures AG announces cross-listing on Amsterdam, Haarlem and Leiden exchanges',
+            'TulipBulb Ventures AG introduces futures contracts — notional value exceeds Dutch GDP',
+            'TulipBulb Ventures AG bulb described as "rarest in Christendom" — bidding war begins',
+            // bearish
+            'TulipBulb Ventures AG contract auction — no buyers appear; auctioneer checks calendar',
+            'TulipBulb Ventures AG investor memo: "perhaps the intrinsic value was the friends we made"',
+            'TulipBulb Ventures AG bulb delivered to buyer — recipient had expected something more',
+            'Dutch States-General classifies TulipBulb Ventures AG contracts as "gambling debts"',
+            'TulipBulb Ventures AG share price now below cost of actual tulip bulb',
+            'TulipBulb Ventures AG annual report features only a pressed flower and no financials',
+        ],
+        'asset-6' => [
+            // bullish
+            'Pets.com Inc. secures $82M Series B — pitch deck contains the word "synergy" 41 times',
+            'Pets.com Inc. Super Bowl ad airing costs more than annual revenue — "brand awareness"',
+            'Pets.com Inc. sock puppet mascot voted most recognisable brand of 2000 — stock pops',
+            'Pets.com Inc. acquires rival Petstore.net for $300M in stock — consolidation play',
+            'Amazon rumoured to acquire Pets.com Inc. — spokesperson says "we sell books"',
+            'Pets.com Inc. announces same-day delivery of 40-lb dog food bags — market loves it',
+            // bearish
+            'Pets.com Inc. burn rate exceeds revenue by 9:1 — CFO calls it "investment phase"',
+            'Pets.com Inc. IPO lockup expires — insiders sell entire positions within 4 minutes',
+            'Pets.com Inc. lays off 255 of 320 employees; sock puppet retained on retainer',
+            'Pets.com Inc. Q3: shipped $1 of product at $6.15 cost — "scale will fix this"',
+            'Pets.com Inc. domain purchased for $82M; current offer: $14',
+            'Pets.com Inc. files Chapter 7; sock puppet auctioned for $20 at liquidation sale',
         ],
     ];
 
@@ -147,17 +198,24 @@ final class PriceGeneratorService
             return null;
         }
 
-        $this->syncMinuteBucket();
-
-        if (self::$eventsThisMinute >= self::$eventsAllowedThisMinute) {
+        $this->syncGlobalMinuteBucket();
+        if (self::$globalEventsCount >= self::GLOBAL_NEWS_CAP) {
             return null;
         }
 
-        if (random_int(0, 999) >= $this->eventRollThreshold()) {
+        $assetId = $asset->getId();
+        $this->syncMinuteBucketForAsset($assetId);
+
+        if ((self::$eventsCountByAsset[$assetId] ?? 0) >= (self::$eventsAllowedByAsset[$assetId] ?? 0)) {
             return null;
         }
 
-        self::$eventsThisMinute++;
+        if (random_int(0, 999) >= $this->eventRollThreshold($assetId)) {
+            return null;
+        }
+
+        self::$globalEventsCount++;
+        self::$eventsCountByAsset[$assetId] = (self::$eventsCountByAsset[$assetId] ?? 0) + 1;
 
         $phase    = self::PHASES[random_int(0, count(self::PHASES) - 1)];
         $def      = self::PHASE_DEFS[$phase];
@@ -184,23 +242,35 @@ final class PriceGeneratorService
         return $pool[random_int(0, count($pool) - 1)];
     }
 
-    private function syncMinuteBucket(): void
+    private function syncGlobalMinuteBucket(): void
+    {
+        $minute = intdiv(time(), 60);
+        if (self::$globalMinuteBucket === $minute) {
+            return;
+        }
+        self::$globalMinuteBucket = $minute;
+        self::$globalEventsCount  = 0;
+    }
+
+    private function syncMinuteBucketForAsset(string $assetId): void
     {
         $minute = intdiv(time(), 60);
 
-        if ($minute === self::$minuteBucket) {
+        if ((self::$minuteBucketByAsset[$assetId] ?? -1) === $minute) {
             return;
         }
 
-        self::$minuteBucket = $minute;
-        self::$eventsThisMinute = 0;
-        self::$eventsAllowedThisMinute = random_int(1, self::MAX_NEWS_PER_MINUTE);
+        self::$minuteBucketByAsset[$assetId]  = $minute;
+        self::$eventsCountByAsset[$assetId]   = 0;
+        self::$eventsAllowedByAsset[$assetId] = random_int(1, 2);
     }
 
     /** Higher return value = more likely to fire. Roll is random_int(0,999) >= threshold → skip. */
-    private function eventRollThreshold(): int
+    private function eventRollThreshold(string $assetId): int
     {
-        $remaining = self::$eventsAllowedThisMinute - self::$eventsThisMinute;
+        $eventsThisMinute   = self::$eventsCountByAsset[$assetId]   ?? 0;
+        $eventsAllowed      = self::$eventsAllowedByAsset[$assetId] ?? 1;
+        $remaining          = $eventsAllowed - $eventsThisMinute;
 
         if ($remaining <= 0) {
             return 1000;
@@ -208,26 +278,34 @@ final class PriceGeneratorService
 
         $secondsLeft = 60 - (time() % 60);
 
-        // If no event fired yet and minute is almost over, guarantee one.
-        if (self::$eventsThisMinute === 0 && $secondsLeft <= 8) {
+        if ($eventsThisMinute === 0 && $secondsLeft <= 8) {
             return 1000;
         }
 
-        // Base probability scales with remaining budget vs seconds left.
-        // ~1% base, ramps up as quota unfilled near end.
-        if ($remaining >= 3) {
-            return 12;
+        if ($remaining >= 2) {
+            return 15;
         }
 
-        return 30 + (3 - $remaining) * 25;
+        return 40;
     }
 
     private function getPhaseSlopeMod(Asset $asset): float
     {
-        return match ($asset->getPhase()) {
-            'bull_run'   => 8.0,
-            'bear_crash' => -12.0,
-            'pump_dump'  => $this->pumpDumpSlopeMod($asset),
+        $phase = $asset->getPhase();
+        if ($phase === 'normal') {
+            return 1.0;
+        }
+
+        $total    = $asset->getPhaseTotalDuration();
+        $remaining = $asset->getPhaseTicksRemaining();
+        $elapsed  = max(0, $total - $remaining);
+        // k=0.15: half-life ≈ 4.6 ticks → sharp initial spike then quick decay
+        $decay    = $total > 0 ? exp(-0.15 * $elapsed) : 1.0;
+
+        return match ($phase) {
+            'bull_run'   =>  18.0 * $decay,
+            'bear_crash' => -26.0 * $decay,
+            'pump_dump'  => $this->pumpDumpSlopeMod($asset) * $decay,
             default      => 1.0,
         };
     }
@@ -238,8 +316,7 @@ final class PriceGeneratorService
         if ($total <= 0) {
             return 1.0;
         }
-
-        return $asset->getPhaseTicksRemaining() > $total / 2 ? 6.0 : -10.0;
+        return $asset->getPhaseTicksRemaining() > $total / 2 ? 8.0 : -14.0;
     }
 
     private function getPhaseNoiseMod(Asset $asset): float

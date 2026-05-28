@@ -66,19 +66,18 @@
             <span id="hero-pnl-pct" class="hero-stat-value"></span>
           </div>
         </div>
+        <details class="hero-portfolio-details">
+          <summary class="hero-portfolio-summary">My Positions</summary>
+          <div id="portfolio" class="hero-portfolio"></div>
+        </details>
       </div>
 
       <main class="grid">
 
-        <!-- Instruments -->
-        <section class="panel panel-frame">
-          <h2 class="panel-title">Instruments</h2>
+        <!-- Instruments & Trading -->
+        <section class="panel panel-frame panel-trade">
+          <h2 class="panel-title">Instruments &amp; Trading</h2>
           <ul id="asset-list"></ul>
-        </section>
-
-        <!-- Trading -->
-        <section class="panel panel-frame panel-trading">
-          <h2 class="panel-title">Trading</h2>
           <div id="live-price" class="live-price">
             <span class="live-price-label">Live Price</span>
             <span id="live-price-name" class="live-price-name">—</span>
@@ -95,7 +94,7 @@
           <input id="quantity" type="number" min="1" value="1" inputmode="numeric">
           <label for="limit-price" class="field-label">Limit Price <span class="field-label-note">(for limit orders)</span></label>
           <input id="limit-price" type="number" min="0.01" step="0.01" inputmode="decimal">
-          <p class="hint">Market = instant fill against the exchange. Limit = adds your order to the book at the price you set (defaults to current market price).</p>
+          <p class="hint">Market = instant fill. Limit = posts to order book at your price.</p>
           <div class="actions">
             <button id="buy-btn"  type="button" class="btn btn-buy">Market Buy</button>
             <button id="sell-btn" type="button" class="btn btn-sell">Market Sell</button>
@@ -109,20 +108,22 @@
           <ul id="open-orders"></ul>
         </section>
 
-        <!-- Portfolio + Order Book -->
+        <!-- Order Book -->
         <section class="panel panel-frame">
-          <h2 class="panel-title">Portfolio</h2>
-          <div id="portfolio"></div>
-          <h3 class="panel-subtitle">Order Book (Players)</h3>
-          <p class="hint">Tap Buy/Sell on a row to trade with that player (uses quantity below).</p>
+          <h2 class="panel-title">Order Book (Players)</h2>
+          <p class="hint">Tap Buy/Sell on a row to trade with that player (uses your quantity above).</p>
           <div id="orderbook" class="orderbook"></div>
         </section>
 
-        <!-- Hall of Fame + Trade History -->
+        <!-- Hall of Fame -->
         <section class="panel panel-frame panel-hall-of-fame">
-          <h2 class="panel-title hall-of-fame-title">🏆 Hall of Fame</h2>
+          <h2 class="panel-title hall-of-fame-title">Hall of Fame</h2>
           <ol id="leaderboard"></ol>
-          <h3 class="panel-subtitle">Trade History</h3>
+        </section>
+
+        <!-- Trade History -->
+        <section class="panel panel-frame">
+          <h2 class="panel-title">Trade History</h2>
           <div id="transactions" class="transactions"></div>
         </section>
 
